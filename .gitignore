@@ -2,8 +2,8 @@
 venv/
 .env/
 .venv/
-volumes/
-
+/volumes/.env/
+/volumes/
 # 환경 설정
 .env
 *.env

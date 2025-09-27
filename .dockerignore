@@ -18,3 +18,4 @@ __pycache__/
 .gitignore
 docker-compose.yml
 volumes/
+/volumes/
