@@ -1,0 +1,19 @@
+# .dockerignore
+
+# 파이썬 가상환경 폴더 제외
+.venv
+venv
+env
+
+# 파이썬 캐시 파일 제외
+__pycache__/
+*.pyc
+*.pyo
+
+# 로그 파일 제외
+*.log
+
+# 기타 설정 파일 제외
+.git
+.gitignore
+docker-compose.yml

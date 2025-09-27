@@ -34,3 +34,8 @@ build/
 # 시스템 파일
 .DS_Store
 Thumbs.db
+
+# 추가 무시 파일
+*.pdf
+*.csv
+*.json
