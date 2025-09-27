@@ -2,6 +2,7 @@
 venv/
 .env/
 .venv/
+volumes/
 
 # 환경 설정
 .env
@@ -39,4 +40,3 @@ Thumbs.db
 *.pdf
 *.csv
 *.json
-volumes/
