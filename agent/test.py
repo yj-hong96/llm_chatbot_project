@@ -79,7 +79,6 @@ rag_app = workflow.compile()
 
 # --- 3. 질문 분해 및 종합을 위한 함수들 ---
 
-# [숏텀 메모리 추가] 1. 질문 분해기에 대화 기록(history) 파라미터 추가
 def decompose_query(user_query: str, history: List[BaseMessage]) -> List[str]:
     """사용자의 복잡한 질문을 검색에 용이한 여러 개의 하위 질문으로 분해합니다."""
     print("\n--- Decomposer 노드 실행 ---")
@@ -119,18 +118,15 @@ def decompose_query(user_query: str, history: List[BaseMessage]) -> List[str]:
     chat_completion = groq_client.chat.completions.create(messages=[{"role": "user", "content": decomposer_prompt}], model="llama-3.1-8b-instant", temperature=0.0)
     decomposed_queries = chat_completion.choices[0].message.content.strip().split('\n')
     
-    # 분해 결과가 비어있는 경우를 방지하기 위한 예외 처리
     if not decomposed_queries or all(q.strip() == '' for q in decomposed_queries):
-        decomposed_queries = [user_query] # 분해 실패 시 원본 질문 사용
+        decomposed_queries = [user_query]
         print(f"질문 분해 실패. 원본 질문 사용: {decomposed_queries}")
     else:
-        # 비어있는 라인 제거
         decomposed_queries = [q.strip() for q in decomposed_queries if q.strip()]
         print(f"분해된 질문: {decomposed_queries}")
         
     return decomposed_queries
 
-# [숏텀 메모리 추가] 2. 최종 답변 종합기에 대화 기록(history) 파라미터 추가
 def synthesize_results(original_query: str, intermediate_answers: List[dict], history: List[BaseMessage]) -> str:
     """각 하위 질문에 대한 답변들을 종합하여 최종 답변을 생성합니다."""
     print("\n--- Synthesizer 노드 실행 ---")
@@ -172,7 +168,7 @@ def synthesize_results(original_query: str, intermediate_answers: List[dict], hi
 ❓ 셀러리를 수확한 후 어떻게 보관하는 것이 좋은지 알려드릴까요?
 
 [최종 답변]"""
-    chat_completion = groq_client.chat.com_pletions.create(messages=[{"role": "user", "content": synthesizer_prompt}], model="llama-3.1-8b-instant", temperature=LLM_TEMPERATURE)
+    chat_completion = groq_client.chat.completions.create(messages=[{"role": "user", "content": synthesizer_prompt}], model="llama-3.1-8b-instant", temperature=LLM_TEMPERATURE)
     final_answer = chat_completion.choices[0].message.content
     print("최종 답변 생성 완료.")
     return final_answer
@@ -196,8 +192,7 @@ async def main():
         intermediate_answers = []
         print("\n--- 각 하위 질문에 대한 RAG 실행 시작 ---")
         
-        # <--- 변경된 부분 시작 --->
-        rate_limit_reached = False # API 사용량 초과 여부를 확인하기 위한 플래그
+        rate_limit_reached = False
         for sub_query in sub_queries:
             try:
                 rag_result = rag_app.invoke({"messages": [HumanMessage(content=sub_query)]})
@@ -205,7 +200,6 @@ async def main():
                 intermediate_answers.append({"sub_query": sub_query, "answer": answer})
             
             except RateLimitError:
-                # API 사용량 초과 오류가 발생했을 때 실행할 코드
                 print("\n" + "="*70)
                 print("🚫 API 사용량 초과 알림 🚫".center(68))
                 print("="*70)
@@ -215,12 +209,10 @@ async def main():
                 print("- 잠시 후 다시 시도하시거나, 내일 API 사용량이 초기화된 후 이용해 주세요.")
                 print("-" * 70)
                 rate_limit_reached = True
-                break # 오류 발생 시, 더 이상 하위 질문을 처리하지 않고 for 루프를 빠져나감
+                break
         
-        # 사용량 초과로 중간에 루프가 중단되었다면, 최종 답변 생성 단계를 건너뛰고 다시 질문을 받음
         if rate_limit_reached:
             continue
-        # <--- 변경된 부분 끝 --->
             
         final_answer = synthesize_results(user_input, intermediate_answers, conversation_history)
         
@@ -236,11 +228,11 @@ async def main():
         print("-" * 70)
 
 if __name__ == "__main__":
-    # [변경] LangGraph 구조를 먼저 시각화하여 png 파일로 저장합니다.
+    # 그래프 시각화
     try:
         graph_image_path = "agent_workflow.png"
         with open(graph_image_path, "wb") as f:
-            # 변수 이름을 'rag_app'으로 수정
+            # 변수 이름을 'rag_app'으로 수정하여 오류 해결
             f.write(rag_app.get_graph().draw_mermaid_png())
         print(f"\n✅ LangGraph 구조가 '{graph_image_path}' 파일로 저장되었습니다.")
     except Exception as e:
