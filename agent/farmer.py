@@ -1,21 +1,27 @@
+## Version: 5.0 - 조건부 라우팅을 통한 지능형 워크플로우 최적화
 import os
 import re
+import time
 import asyncio
+import logging
 from dotenv import load_dotenv
 from groq import Groq, RateLimitError
-from typing import TypedDict, List
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, BaseMessage
+from typing import TypedDict, List, Literal
+from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 from pymilvus import connections, Collection
 from langgraph.graph import StateGraph, END
 
-# --- 1. 초기 설정 (이전과 동일) ---
+# --- 1. 로깅 및 초기 설정 ---
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 load_dotenv()
 try:
     groq_client = Groq()
 except Exception as e:
-    print(f"오류: Groq 클라이언트를 초기화할 수 없습니다. {e}")
+    logger.error(f"Groq 클라이언트를 초기화할 수 없습니다: {e}")
     exit()
 
 MILVUS_HOST = "localhost"
@@ -24,227 +30,247 @@ COLLECTION_NAME = "farmer"
 EMBEDDING_MODEL = "jhgan/ko-sroberta-multitask"
 LLM_TEMPERATURE = 0.7
 
-print("임베딩 모델을 로드합니다...")
+logger.info("임베딩 모델을 로드합니다...")
 embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
 
-print("Milvus에 연결하고 컬렉션을 로드합니다...")
+logger.info("Milvus에 연결하고 컬렉션을 로드합니다...")
 try:
     connections.connect("default", host=MILVUS_HOST, port=MILVUS_PORT)
     farmer_collection = Collection(COLLECTION_NAME)
     farmer_collection.load()
-    print("Milvus 컬렉션 로드 완료.")
+    logger.info("Milvus 컬렉션 로드 완료.")
 except Exception as e:
-    print(f"오류: Milvus 컬렉션을 로드할 수 없습니다. {e}")
+    logger.error(f"Milvus 컬렉션을 로드할 수 없습니다: {e}")
     exit()
 
-# --- 2. LangGraph RAG 에이전트 정의 (단일 질문 처리용) ---
+# --- 2. LangGraph 상태 및 노드 정의 ---
 class AgentState(TypedDict):
     messages: List[BaseMessage]
     documents: List[Document]
+    rewritten_query: str
+    original_query: str
 
-def retrieve_documents(state: AgentState) -> AgentState:
-    print(f"--- Retriever 실행 (질문: '{state['messages'][-1].content[:30]}...') ---")
-    last_message = state['messages'][-1]
-    query_vector = embeddings.embed_query(last_message.content)
+def rewrite_query(state: AgentState) -> AgentState:
+    """대화 기록을 바탕으로 사용자의 마지막 질문을 검색용 질문으로 재작성합니다."""
+    messages = state['messages']
+    last_message = messages[-1]
+    original_query = last_message.content
+    
+    if len(messages) == 1:
+        logger.info("첫 질문이므로 쿼리 재작성을 건너뜁니다.")
+        return {"rewritten_query": original_query, "original_query": original_query}
+
+    history_str = "\n".join([f"{'사용자' if isinstance(msg, HumanMessage) else '챗봇'}: {msg.content}" for msg in messages[:-1]])
+    
+    logger.info("\n--- Query Rewriter 실행 ---")
+    rewrite_prompt = f"""당신은 사용자의 질문과 대화 기록을 분석하여, 검색에 가장 적합한 '검색용 질문'을 생성하는 전문가입니다.
+
+[대화 기록]
+{history_str}
+
+[사용자의 최신 질문]
+{original_query}
+
+[지침]
+1.  **의도 파악**: 사용자의 최신 질문이 '새로운 추천'을 원하는 것인지, 아니면 이전에 언급된 작물에 대한 '상세 설명'(예: 재배 방법, 병해충)을 원하는 것인지 파악하세요.
+2.  **'상세 설명' 요청 처리**: 만약 질문이 '상세 설명'에 해당한다면, [대화 기록]에서 언급된 모든 작물 이름(예: 비트, 양파, 상추)을 찾아내고, 각 작물에 대한 구체적인 질문(예: "비트 재배 방법", "양파 재배 방법")을 생성하세요. 생성된 모든 질문을 '또는' 이라는 키워드로 연결하여 하나의 긴 질문으로 만드세요.
+3.  **'새로운 추천' 요청 처리**: 만약 질문이 '새로운 추천'에 해당한다면, [대화 기록]의 조건과 새로운 작물을 결합하여 하나의 검색 질문(예: "고랭지 지역에 감자를 포함하여 추천")을 만드세요.
+4.  **출력 형식**: 최종 결과는 오직 재작성된 '질문' 한 줄이어야 합니다.
+
+[예시 1: 상세 설명 요청]
+- 이전 대화: 챗봇: ...비트, 양파, 상추를 추천합니다.
+- 사용자 질문: 재배 방법은 어떻게 돼?
+- 재작성된 검색용 질문: 비트 재배 방법 또는 양파 재배 방법 또는 상추 재배 방법
+
+[예시 2: 새로운 추천 요청]
+- 이전 대화: 고랭지 작물로 셀러리를 추천함.
+- 사용자 질문: 감자는 어때?
+- 재작성된 검색용 질문: 고랭지 지역에 셀러리와 감자를 포함하여 추천
+
+[실제 재작성 작업]
+[재작성된 검색용 질문]"""
+
+    try:
+        chat_completion = groq_client.chat.completions.create(
+            messages=[{"role": "user", "content": rewrite_prompt}],
+            model="llama-3.1-8b-instant",
+            temperature=0.0
+        )
+        rewritten_query = chat_completion.choices[0].message.content.strip()
+        logger.info(f"재작성된 질문: {rewritten_query}")
+        return {"rewritten_query": rewritten_query, "original_query": original_query}
+    except Exception as e:
+        logger.error(f"쿼리 재작성 중 오류 발생: {e}")
+        return {"rewritten_query": original_query, "original_query": original_query}
+
+def retrieve_documents_hybrid(state: AgentState) -> AgentState:
+    """재작성된 질문을 기반으로 하이브리드 검색을 수행합니다."""
+    rewritten_query = state['rewritten_query']
+    logger.info(f"\n--- Retriever 실행 (검색 질문: '{rewritten_query[:50]}...') ---")
+    
+    query_vector = embeddings.embed_query(rewritten_query)
     search_params = {"metric_type": "L2", "params": {"nprobe": 10}}
-    results = farmer_collection.search(data=[query_vector], anns_field="vector", param=search_params, limit=3, output_fields=["text"])
-    retrieved_docs = [Document(page_content=hit.entity.get('text')) for hit in results[0]] if results and results[0] else []
+    vector_results = farmer_collection.search(data=[query_vector], anns_field="vector", param=search_params, limit=5, output_fields=["text", "source", "page"])
+    keywords = re.split(r'\s|또는', rewritten_query)
+    keyword_results = []
+    if keywords:
+        safe_keywords = [re.sub(r'[^가-힣\w]', '', kw) for kw in keywords if kw]
+        if safe_keywords:
+            keyword_expr = " or ".join([f"text like '%{keyword}%'" for keyword in safe_keywords])
+            keyword_results = farmer_collection.query(expr=keyword_expr, limit=5, output_fields=["text", "source", "page"])
+    all_hits = (vector_results[0] if vector_results and vector_results[0] else []) + keyword_results
+    unique_docs = {}
+    for hit in all_hits:
+        doc_content = hit.get('text') if isinstance(hit, dict) else hit.entity.get('text')
+        if doc_content not in unique_docs:
+            source = hit.get('source') if isinstance(hit, dict) else hit.entity.get('source')
+            page = hit.get('page') if isinstance(hit, dict) else hit.entity.get('page')
+            unique_docs[doc_content] = Document(page_content=doc_content, metadata={"source": source, "page": page})
+    retrieved_docs = list(unique_docs.values())
+    logger.info(f"최종 검색된 고유 문서 {len(retrieved_docs)}개")
     return {"documents": retrieved_docs}
 
-def generate_response(state: AgentState) -> AgentState:
-    print(f"--- Generator 실행 ---")
-    context = "\n\n".join([doc.page_content for doc in state['documents']])
-    system_prompt = "당신은 주어진 [참고 정보]만을 바탕으로 질문에 답변하는 농업 전문가입니다. 정보가 없으면 '제공된 정보에는 해당 내용이 없습니다.'라고만 답변하세요. 답변은 반드시 한국어로 작성해야 합니다."
-    user_prompt = f"[참고 정보]\n{context}\n\n[질문]\n{state['messages'][-1].content}"
-    api_messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
-    chat_completion = groq_client.chat.completions.create(messages=api_messages, model="llama-3.3-70b-versatile", temperature=LLM_TEMPERATURE)
-    bot_response_content = chat_completion.choices[0].message.content
-    return {"messages": [AIMessage(content=bot_response_content)]}
+def generate_final_response(state: AgentState) -> dict:
+    """사용자의 원본 질문 의도에 맞춰 최종 답변을 생성합니다."""
+    logger.info("--- Generator 실행 (최종 답변 생성) ---")
+    messages = state['messages']
+    documents = state['documents']
+    original_query = state['original_query']
+    context = "\n\n".join([f"[출처: {doc.metadata.get('source', '알 수 없음')}, {doc.metadata.get('page', 'N/A')}페이지]\n{doc.page_content}" for doc in documents])
+    history_str = "\n".join([f"{'사용자' if isinstance(msg, HumanMessage) else '챗봇'}: {msg.content}" for msg in messages[:-1]])
 
-def clean_markdown(text: str) -> str:
-    """LLM이 생성한 마크다운 서식을 제거하는 함수"""
-    text = re.sub(r'#+\s*', '', text)
-    text = re.sub(r'^\s*[\*\-]\s*|\s*\d+\.\s*', '', text, flags=re.MULTILINE)
-    text = re.sub(r'\*\*', '', text)
-    return text.strip()
-
-workflow = StateGraph(AgentState)
-workflow.add_node("retriever", retrieve_documents)
-workflow.add_node("generator", generate_response)
-workflow.set_entry_point("retriever")
-workflow.add_edge("retriever", "generator")
-workflow.add_edge("generator", END)
-rag_app = workflow.compile()
-
-
-# --- 3. 질문 분해 및 종합을 위한 함수들 ---
-
-# [숏텀 메모리 추가] 1. 질문 분해기에 대화 기록(history) 파라미터 추가
-def decompose_query(user_query: str, history: List[BaseMessage]) -> List[str]:
-    """사용자의 복잡한 질문을 검색에 용이한 여러 개의 하위 질문으로 분해합니다."""
-    print("\n--- Decomposer 노드 실행 ---")
-    
-    history_str = "\n".join([f"{'사용자' if isinstance(msg, HumanMessage) else '챗봇'}: {msg.content}" for msg in history])
-
-    decomposer_prompt = f"""당신은 사용자의 최신 질문을 명확하고 검색 가능한 하위 질문들로 분해하는 전문가입니다. 당신의 목표는 오직 '검색'에 가장 효율적인 형태로 질문을 재구성하는 것입니다.
+    final_prompt = f"""당신은 사용자의 질문 의도를 파악하고, 그에 맞춰 검색된 정보를 종합하여 완벽한 답변을 생성하는 '농업 전문 AI'입니다.
 
 [이전 대화 기록]
 {history_str}
 
-[절대 규칙]
-- **절대 이전 대화를 요약하거나 정리하지 마세요.** 당신의 임무는 오직 사용자의 마지막 질문을 분해하는 것입니다.
-- 각 하위 질문은 독립적으로 검색될 수 있도록 완전한 문장 형태여야 합니다.
-- 대화 기록을 참고하여, '그거', '어떻게', '왜' 와 같은 모호한 표현이 어떤 구체적인 대상(예: 셀러리)을 지칭하는지 명확히 하여 질문을 재구성하세요.
-- 사용자의 질문이 이미 단순하고 명확하다면, 불필요하게 나누지 말고 거의 그대로 출력하세요.
-- 최종 출력은 오직 분해된 질문 목록이어야 하며, 다른 설명이나 제목을 절대 포함해서는 안 됩니다.
-- 출력하는 모든 텍스트는 순수 한글이어야 합니다. (영어, 한자 등 금지)
-
-[분해 예시 1]
-- 이전 대화: 고랭지 작물로 셀러리를 추천함.
-- 사용자 질문: 그럼 어떻게 재배하고 수확은 언제 해?
-- 출력:
-셀러리 재배 방법
-셀러리 수확 시기
-
-[분해 예시 2]
-- 이전 대화: 없음
-- 사용자 질문: 배추의 병해충 종류와 방제법 알려줘.
-- 출력:
-배추의 주요 병해충 종류
-배추 병해충 방제법
-
-[실제 분해 작업]
-- 사용자 질문: {user_query}
-- 출력:"""
-    chat_completion = groq_client.chat.completions.create(messages=[{"role": "user", "content": decomposer_prompt}], model="llama-3.1-8b-instant", temperature=0.0)
-    decomposed_queries = chat_completion.choices[0].message.content.strip().split('\n')
-    
-    # 분해 결과가 비어있는 경우를 방지하기 위한 예외 처리
-    if not decomposed_queries or all(q.strip() == '' for q in decomposed_queries):
-        decomposed_queries = [user_query] # 분해 실패 시 원본 질문 사용
-        print(f"질문 분해 실패. 원본 질문 사용: {decomposed_queries}")
-    else:
-        # 비어있는 라인 제거
-        decomposed_queries = [q.strip() for q in decomposed_queries if q.strip()]
-        print(f"분해된 질문: {decomposed_queries}")
-        
-    return decomposed_queries
-
-# [숏텀 메모리 추가] 2. 최종 답변 종합기에 대화 기록(history) 파라미터 추가
-def synthesize_results(original_query: str, intermediate_answers: List[dict], history: List[BaseMessage]) -> str:
-    """각 하위 질문에 대한 답변들을 종합하여 최종 답변을 생성합니다."""
-    print("\n--- Synthesizer 노드 실행 ---")
-    
-    history_str = "\n".join([f"{'사용자' if isinstance(msg, HumanMessage) else '챗봇'}: {msg.content}" for msg in history])
-    
-    context = ""
-    for item in intermediate_answers:
-        context += f"### 하위 질문: {item['sub_query']}\n답변: {item['answer']}\n\n"
-        
-    synthesizer_prompt = f"""당신은 친절하고 유능한 '농업 기술 전문 AI 조수'입니다. 주어진 모든 정보를 종합하여 사용자의 질문에 대한 최종 답변을 생성하는 임무를 맡았습니다.
-
-[이전 대화 기록]
-{history_str}
-
-[새로 검색된 정보]
+[검색된 참고 정보]
 {context}
 
-[원래 질문]
+[사용자의 최신 질문]
 {original_query}
 
 [답변 생성 지침]
-1.  **페르소나 유지**: 항상 친절하고 전문적인 조수의 말투를 유지하세요. 사용자가 이해하기 쉽도록 명확하고 부드러운 대화체로 답변을 작성해야 합니다.
-2.  **정보 종합 및 재구성**: [새로 검색된 정보]에 있는 각각의 답변들을 단순히 나열하지 마세요. 모든 정보를 유기적으로 연결하고, 내용이 중복된다면 하나로 요약하여 하나의 완성된 답변으로 재구성해야 합니다.
-3.  **작물 이름 일반화 (매우 중요)**: 답변에 '유타개량 15호', '설향', '대관령'과 같은 구체적인 **품종** 이름이 언급될 경우, 반드시 그것이 속한 **상위 작물**(예: 셀러리, 딸기, 감자) 이름으로 일반화하여 설명하세요. 사용자는 품종이 아닌 작물 자체에 대해 궁금해합니다.
-4.  **언어 순수성**: 최종 답변은 **오직 순수 한글**로만 작성되어야 합니다. 영어, 한자(예: 進行->진행), 일본어, 이모티콘, 깨진 문자 등 다른 언어나 문자는 절대 포함해서는 안 됩니다.
-5.  **형식 엄수**: 제목(##), 목록(*, 1.), 굵은 글씨(**) 등 어떤 종류의 마크다운 서식도 절대 사용하지 마세요. 오직 순수한 문장으로만 답변을 구성해야 합니다.
-6.  **솔직함과 근거 기반 답변**: 답변은 반드시 [새로 검색된 정보]에 있는 내용만을 근거로 해야 합니다. 만약 정보가 질문에 답하기에 부족하거나 없다면, 절대로 추측하거나 꾸며내지 마세요. 이 경우, "죄송하지만, 제공된 정보만으로는 해당 내용에 대해 정확히 답변하기 어렵습니다."라고 솔직하게 말해야 합니다.
-7.  **[추가] 후속 질문 유도**: 모든 답변이 끝난 후, 마지막에 사용자가 궁금해할 만한 관련 질문을 한두 가지 제안하여 대화를 자연스럽게 유도하세요. 질문 앞에는 물음표 이모지(❓)를 붙여주세요.
+1.  **의도 파악 및 답변 구조화**: 먼저 [사용자의 최신 질문]이 '작물 추천'을 원하는지, 아니면 '재배 방법'과 같은 '상세 설명'을 원하는지 파악하세요. 그 의도에 맞춰 답변의 전체적인 흐름을 결정해야 합니다.
+2.  **'추천' 답변**: 만약 사용자가 작물 추천을 원했다면, [검색된 참고 정보]를 바탕으로 조건에 맞는 작물들을 목록으로 제시하고, 각 작물이 왜 적합한지 간략히 설명하세요.
+3.  **'설명' 답변**: 만약 사용자가 재배 방법 등을 물었다면, [검색된 참고 정보]에서 각 작물(예: 비트, 양파, 상추)의 재배 방법에 대한 내용을 찾아 명확하게 구분하여 설명해주세요.
+4.  **자연스러운 대화**: 답변을 시작할 때, 이전 대화의 맥락을 이어받는 자연스러운 문장으로 시작하세요. (예: "네, 이전에 추천해 드렸던 작물들의 재배 방법에 대해 알려드릴게요.")
+5.  **임무 집중**: 사용자가 묻지 않은 내용(예: 추천을 원하는데 재배 방법을 설명)은 먼저 언급하지 마세요.
+6.  **핵심 규칙 준수**: '품종 이름'을 '작물명'으로 일반화하고, '순수 한글'만 사용하며, '마크다운 서식 금지' 규칙은 항상 지켜야 합니다.
+7.  **정보 부족 시**: 특정 작물에 대한 정보가 부족하다면, "OO에 대한 정보는 찾지 못했지만, 다른 작물에 대해서는 다음과 같습니다." 와 같이 솔직하게 답변하세요.
+8.  **후속 질문 제안**: 답변 마지막에, 현재 대화의 주제와 관련된 유용한 후속 질문을 제안하세요.
 
 위 지침에 따라 최종 답변을 생성하세요.
-
-[최종 답변 예시]
-(사용자가 '셀러리 재배법'을 물어봤을 경우의 답변 예시입니다)
-
-셀러리는 서늘한 기후를 좋아하는 작물이라 온도 관리가 중요합니다. 보통 15도에서 20도 사이를 유지해주는 것이 좋고, 흙이 마르지 않도록 물을 충분히 주어야 합니다. 너무 건조하면 줄기가 딱딱해져 품질이 떨어질 수 있습니다.
-
-❓ 셀러리의 병해충 예방 방법에 대해 더 알아볼까요?
-❓ 셀러리를 수확한 후 어떻게 보관하는 것이 좋은지 알려드릴까요?
-
 [최종 답변]"""
-    chat_completion = groq_client.chat.com_pletions.create(messages=[{"role": "user", "content": synthesizer_prompt}], model="llama-3.1-8b-instant", temperature=LLM_TEMPERATURE)
-    final_answer = chat_completion.choices[0].message.content
-    print("최종 답변 생성 완료.")
-    return final_answer
+    
+    api_messages = [{"role": "user", "content": final_prompt}]
+    chat_completion = groq_client.chat.completions.create(
+        messages=api_messages, 
+        model="llama-3.3-70b-versatile",
+        temperature=LLM_TEMPERATURE
+    )
+    full_response = chat_completion.choices[0].message.content
+    logger.info("최종 답변 생성 완료.")
+    
+    new_messages = messages + [AIMessage(content=full_response)]
+    return {"messages": new_messages}
 
-# --- 4. 메인 로직 (질문 분해 파이프라인) ---
-async def main():
-    """질문 분해 기반의 챗봇 메인 함수"""
-    print("안녕하세용 작물에 해당하는 내용 질문 해주세용^^")
+# ====[수정된 부분 1: 새로운 노드 추가]====
+# 검색된 문서가 없을 경우를 처리하기 위한 간단한 노드를 추가합니다.
+def handle_no_documents(state: AgentState) -> dict:
+    """검색된 문서가 없을 때 간단한 답변을 생성하는 함수"""
+    logger.info("--- No Documents 핸들러 실행 ---")
+    response_text = "죄송하지만, 문의하신 내용과 관련된 정보를 데이터베이스에서 찾지 못했습니다. 다른 질문을 해주시겠어요?"
+    new_messages = state['messages'] + [AIMessage(content=response_text)]
+    return {"messages": new_messages}
+
+# ====[수정된 부분 2: 조건부 라우터 함수 추가]====
+# Retriever 노드 실행 후, 검색된 문서의 유무에 따라 다음 단계를 결정하는 함수입니다.
+def should_generate(state: AgentState) -> Literal["generator", "no_docs_handler"]:
+    """검색된 문서가 있는지 확인하여 다음 노드를 결정합니다."""
+    logger.info("--- 라우터 실행: 문서 존재 여부 확인 ---")
+    if state["documents"]:
+        logger.info("결과: 문서 있음 -> Generator로 이동")
+        return "generator"
+    else:
+        logger.info("결과: 문서 없음 -> No Documents 핸들러로 이동")
+        return "no_docs_handler"
+
+# --- 3. LangGraph 워크플로우 구축 ---
+workflow = StateGraph(AgentState)
+workflow.add_node("query_rewriter", rewrite_query)
+workflow.add_node("retriever", retrieve_documents_hybrid)
+workflow.add_node("generator", generate_final_response)
+# ====[수정된 부분 3: 새로운 노드 등록]====
+workflow.add_node("no_docs_handler", handle_no_documents)
+
+workflow.set_entry_point("query_rewriter")
+workflow.add_edge("query_rewriter", "retriever")
+
+# ====[수정된 부분 4: 조건부 엣지(Conditional Edge) 설정]====
+# retriever 노드 다음에 should_generate 함수를 실행하여 분기점을 만듭니다.
+workflow.add_conditional_edges(
+    "retriever",
+    should_generate,
+    {
+        "generator": "generator",
+        "no_docs_handler": "no_docs_handler"
+    }
+)
+# 각 분기점의 마지막은 END로 연결합니다.
+workflow.add_edge("generator", END)
+workflow.add_edge("no_docs_handler", END)
+
+rag_app = workflow.compile()
+
+# --- 4. 챗봇 메인 로직 ---
+def main():
+    """작물 추천 에이전트의 메인 함수"""
+    print("\n" + "="*70)
+    print(" 작물 추천 전문 AI ".center(70, "="))
+    print("="*70)
+    print("안녕하세요! 원하시는 재배 조건(지역, 기후 등)을 알려주시면 적합한 작물을 추천해 드립니다.")
+    print("대화를 종료하려면 '종료'라고 입력해주세요.")
     print("-" * 70)
 
-    conversation_history: List[BaseMessage] = []
+    current_state = {"messages": [], "documents": [], "rewritten_query": "", "original_query": ""}
 
     while True:
         user_input = input("나: ")
         if user_input.lower() == '종료':
-            print("챗봇: 대화를 종료합니다.")
+            print("\n챗봇: 대화를 종료합니다. 이용해주셔서 감사합니다.")
             break
 
-        sub_queries = decompose_query(user_input, conversation_history)
-
-        intermediate_answers = []
-        print("\n--- 각 하위 질문에 대한 RAG 실행 시작 ---")
+        current_state["messages"].append(HumanMessage(content=user_input))
         
-        # <--- 변경된 부분 시작 --->
-        rate_limit_reached = False # API 사용량 초과 여부를 확인하기 위한 플래그
-        for sub_query in sub_queries:
-            try:
-                rag_result = rag_app.invoke({"messages": [HumanMessage(content=sub_query)]})
-                answer = rag_result['messages'][-1].content
-                intermediate_answers.append({"sub_query": sub_query, "answer": answer})
+        try:
+            final_state = rag_app.invoke(current_state)
+            current_state = final_state
+            final_bot_message = current_state["messages"][-1]
+
+            print(f"챗봇: ", end="", flush=True)
+            for char in final_bot_message.content:
+                print(char, end="", flush=True)
+                time.sleep(0.02)
+            print()
             
-            except RateLimitError:
-                # API 사용량 초과 오류가 발생했을 때 실행할 코드
-                print("\n" + "="*70)
-                print("🚫 API 사용량 초과 알림 🚫".center(68))
-                print("="*70)
-                print("현재 Groq API의 하루 사용 가능량을 모두 소진했습니다.")
-                print("이 질문에 대한 답변을 더 이상 생성할 수 없습니다.")
-                print("\n[해결 방법]")
-                print("- 잠시 후 다시 시도하시거나, 내일 API 사용량이 초기화된 후 이용해 주세요.")
-                print("-" * 70)
-                rate_limit_reached = True
-                break # 오류 발생 시, 더 이상 하위 질문을 처리하지 않고 for 루프를 빠져나감
-        
-        # 사용량 초과로 중간에 루프가 중단되었다면, 최종 답변 생성 단계를 건너뛰고 다시 질문을 받음
-        if rate_limit_reached:
-            continue
-        # <--- 변경된 부분 끝 --->
-            
-        final_answer = synthesize_results(user_input, intermediate_answers, conversation_history)
-        
-        conversation_history.append(HumanMessage(content=user_input))
-        conversation_history.append(AIMessage(content=final_answer))
+            print("-" * 70)
 
-        cleaned_answer = clean_markdown(final_answer)
-
-        print("\n" + "="*70)
-        print(" 최종 답변 ".center(70, "="))
-        print("="*70)
-        print(f"챗봇: {final_answer}")
-        print("-" * 70)
+        except RateLimitError:
+            logger.warning("Groq API 사용량 제한에 도달했습니다.")
+            # ... (오류 처리 부분은 동일)
+        except Exception as e:
+            logger.error(f"예상치 못한 오류가 발생했습니다: {e}", exc_info=True)
+            print(f"\n죄송합니다, 오류가 발생하여 답변을 생성할 수 없습니다. 잠시 후 다시 시도해주세요.")
 
 if __name__ == "__main__":
-    # [변경] LangGraph 구조를 먼저 시각화하여 png 파일로 저장합니다.
     try:
         graph_image_path = "agent_workflow.png"
         with open(graph_image_path, "wb") as f:
-            # 변수 이름을 'rag_app'으로 수정
             f.write(rag_app.get_graph().draw_mermaid_png())
-        print(f"\n✅ LangGraph 구조가 '{graph_image_path}' 파일로 저장되었습니다.")
+        logger.info(f"LangGraph 구조가 '{graph_image_path}' 파일로 저장되었습니다.")
     except Exception as e:
-        print(f"\n[알림] 그래프 시각화 중 오류가 발생했습니다: {e}")
+        logger.warning(f"그래프 시각화 중 오류가 발생했습니다: {e}")
 
-    # 이미지 생성 후, 챗봇의 메인 함수를 실행합니다.
-    asyncio.run(main())
+    main()
+
