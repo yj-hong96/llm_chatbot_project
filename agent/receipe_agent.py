@@ -267,13 +267,21 @@ def main():
             logger.error(f"예상치 못한 오류가 발생했습니다: {e}", exc_info=True)
             print(f"\n죄송합니다, 오류가 발생하여 답변을 생성할 수 없습니다. 잠시 후 다시 시도해주세요.")
 
-if __name__ == "__main__":
-    try:
-        graph_image_path = "receipe_graph.png"
-        with open(graph_image_path, "wb") as f:
-            f.write(rag_app.get_graph().draw_mermaid_png())
-        logger.info(f"LangGraph 구조가 '{graph_image_path}' 파일로 저장되었습니다.")
-    except Exception as e:
-        logger.warning(f"그래프 시각화 중 오류가 발생했습니다: {e}")
+if __name__ == "__main__": # 스크립트가 직접 실행될 때만 아래 코드 실행
+    # 1) 워크플로우 시각화 PNG 파일 생성
+    if rag_app: # 그래프 객체가 성공적으로 생성되었는지 확인
+         try:
+              graph_image_path = f"{COLLECTION_NAME}_workflow.png" # 저장할 이미지 파일명
+              # 그래프 구조를 Mermaid 형식으로 그려 PNG 파일로 저장
+              with open(graph_image_path, "wb") as f:
+                   f.write(rag_app.get_graph().draw_mermaid_png())
+              logger.info(f"LangGraph 구조가 '{graph_image_path}' 파일로 저장되었습니다.") # 성공 로그
+         except Exception as e:
+              # 시각화 중 오류 발생 시 경고 로그
+              logger.warning(f"그래프 시각화 중 오류가 발생했습니다: {e}")
+    else:
+         # 그래프 객체 생성 실패 시 시각화 건너뛰기 로그
+         logger.warning("워크플로우 객체(rag_app)가 없어 시각화를 건너<0xEB><0x9A><0x8E>니다.")
 
-    main()
+    # 2) 실제 데이터 처리 및 저장 작업 실행
+    main() # 메인 실행 함수 호출

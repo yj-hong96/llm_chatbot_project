@@ -53,14 +53,13 @@ logger = logging.getLogger(__name__) # 현재 모듈에 대한 로거 인스턴�
 MILVUS_HOST = "localhost" # Milvus 서버 호스트 주소
 MILVUS_PORT = "19530" # Milvus 서버 포트 번호
 
-COLLECTION_NAME = "receipe"  # Milvus에 저장할 컬렉션 이름 (레시피 데이터용)
-# COLLECTION_NAME = "crop_info"  # (다른 컬렉션 사용 시 주석 해제)
+
+COLLECTION_NAME = "nutrient"  # nutrient에 저장할 컬렉션 이름
 
 DIMENSION = 768 # 임베딩 벡터의 차원 수 (사용하는 모델에 따라 결정됨)
 EMBEDDING_MODEL = "jhgan/ko-sroberta-multitask" # 사용할 허깅페이스 임베딩 모델 이름
 
-DATA_PATH = r"D:\vsc\receipe" # 데이터 파일(PDF, CSV 등)이 있는 디렉토리 경로
-# DATA_PATH = r"D:\vsc\crop_info" # (다른 경로 사용 시 주석 해제)
+DATA_PATH = r"D:\vsc\pdf\nutrient" # 폴더명 지정 장소.
 
 # [업데이트] DB에 이미 존재하더라도 강제로 다시 처리하고 싶은 파일명 목록
 FORCE_REPROCESS = set([
@@ -655,7 +654,7 @@ if __name__ == "__main__": # 스크립트가 직접 실행될 때만 아래 코�
     # 1) 워크플로우 시각화 PNG 파일 생성
     if rag_app: # 그래프 객체가 성공적으로 생성되었는지 확인
          try:
-              graph_image_path = "db_load_workflow.png" # 저장할 이미지 파일명
+              graph_image_path = f"{COLLECTION_NAME}_db_load_workflow.png" # 저장할 이미지 파일명
               # 그래프 구조를 Mermaid 형식으로 그려 PNG 파일로 저장
               with open(graph_image_path, "wb") as f:
                    f.write(rag_app.get_graph().draw_mermaid_png())
