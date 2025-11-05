@@ -1,20 +1,88 @@
-// 1. App.css 파일을 불러옵니다.
-import './App.css';
+// 메인/채팅 라우팅 및 로고 클릭 동작을 담당하는 JSX
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import "./App.css";
 
-// 2. 기존 useState, 로고 등을 모두 정리한 App 컴포넌트
+function HomePage() {
+  const navigate = useNavigate(); // 있어도 되고, 안 써도 됨
+
+  return (
+    <div className="page home-page">
+      <header className="app-header">
+        {/* 첫 화면에서 로고 클릭 -> 실제 새로고침 */}
+        <div
+          className="logo-box"
+          onClick={() => window.location.reload()}
+        >
+          <h1 className="logo-text">챗봇</h1>
+        </div>
+      </header>
+
+      <main className="home-main">
+        <div className="hero-image">
+          <img className="hero-bg" src="/img/homepage.jpg" alt="홈 배경" />
+        </div>
+
+        <button
+          className="start-chat-btn"
+          onClick={() => navigate("/chat")}
+        >
+          채팅 시작 하기
+        </button>
+      </main>
+    </div>
+  );
+}
+
+function ChatPage() {
+  const navigate = useNavigate();
+
+  return (
+    <div className="page chat-page">
+      <header className="app-header chat-header">
+        {/* 채팅 화면에서 로고 클릭 -> 첫 화면으로 이동 */}
+        <div
+          className="logo-box"
+          onClick={() => navigate("/")}
+        >
+          <h1 className="logo-text small">챗봇</h1>
+        </div>
+      </header>
+
+      <main className="chat-main">
+        <div className="chat-container">
+          <div className="chat-messages">
+            <div className="message bot">안녕하세요! 무엇을 도와드릴까요?</div>
+            <div className="message user">테스트 메시지 입니다.</div>
+          </div>
+
+          <div className="chat-input-area">
+            <input
+              className="chat-input"
+              type="text"
+              placeholder="메시지를 입력하세요..."
+            />
+            <button className="chat-send-btn">
+              <img
+                src="/img/trans_message.png"
+                alt="전송"
+                className="send-icon"
+              />
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 function App() {
   return (
-    // 3. App.css에서 사용할 className을 지정합니다.
-    <div className="my-homepage-container">
-      <h1>나의 반응형 홈페이지</h1>
-      <p>
-        이 페이지는 브라우저 창 크기에 따라 스타일이 변경됩니다.
-      </p>
-      <p>
-        창을 768px 너비 이하로 줄여보세요. 
-        제목(h1)의 색상과 크기가 바뀝니다.
-      </p>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/chat" element={<ChatPage />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
