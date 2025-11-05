@@ -300,7 +300,7 @@ function ChatPage() {
   const [confirmDelete, setConfirmDelete] = useState(null); // 삭제 확인 모달
   const [renameInfo, setRenameInfo] = useState(null); // 이름 변경 모달 {id, value}
   const [sidebarOpen, setSidebarOpen] = useState(false); // 🔹 왼쪽 상단 고정 사이드바 토글
-    // 🔹 사이드바 접힘 상태
+  // 🔹 사이드바 접힘 상태
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // 드래그 상태
@@ -395,6 +395,18 @@ function ChatPage() {
         c.id === id ? { ...c, title: trimmed, updatedAt: Date.now() } : c
       ),
     }));
+    setMenuOpenId(null);
+  };
+
+  // 🔹 삭제 모달 열기
+  const openDeleteConfirmModal = (id, title) => {
+    setConfirmDelete({ id, title });
+    setMenuOpenId(null);
+  };
+
+  // 🔹 이름 변경 모달 열기
+  const openRenameModal = (id, title) => {
+    setRenameInfo({ id, value: title || "" });
     setMenuOpenId(null);
   };
 
@@ -629,16 +641,12 @@ function ChatPage() {
           e.stopPropagation();
           setSidebarOpen((prev) => !prev);
         }}
-      >
-        
-      </button>
+      ></button>
 
- <div className="chat-layout">
+      <div className="chat-layout">
         {/* ===== 좌측: 대화 목록 사이드바 ===== */}
         <aside
-          className={
-            "chat-sidebar" + (sidebarCollapsed ? " collapsed" : "")
-          }
+          className={"chat-sidebar" + (sidebarCollapsed ? " collapsed" : "")}
         >
           <div className="sidebar-top">
             {/* 햄버거 메뉴 아이콘 – 항상 좌측 상단 고정 */}
@@ -651,10 +659,7 @@ function ChatPage() {
 
             {/* 사이드바가 펼쳐져 있을 때만 '새 채팅' 버튼 노출 */}
             {!sidebarCollapsed && (
-              <button
-                className="sidebar-new-chat-btn"
-                onClick={handleNewChat}
-              >
+              <button className="sidebar-new-chat-btn" onClick={handleNewChat}>
                 새 채팅
               </button>
             )}
@@ -690,9 +695,7 @@ function ChatPage() {
                         className="sidebar-chat-main"
                         onClick={() => handleSelectConversation(conv.id)}
                       >
-                        <span className="sidebar-chat-index">
-                          {idx + 1}
-                        </span>
+                        <span className="sidebar-chat-index">{idx + 1}</span>
                         <span className="sidebar-chat-title">
                           {conv.title}
                         </span>
@@ -711,7 +714,10 @@ function ChatPage() {
                       </button>
 
                       {menuOpenId === conv.id && (
-                        <div className="sidebar-chat-menu">
+                        <div
+                          className="sidebar-chat-menu"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <button
                             onClick={() =>
                               openDeleteConfirmModal(conv.id, conv.title)
@@ -764,7 +770,9 @@ function ChatPage() {
                 {messages.map((m, idx) => (
                   <div
                     key={idx}
-                    className={`message ${m.role === "bot" ? "bot" : "user"}`}
+                    className={`message ${
+                      m.role === "bot" ? "bot" : "user"
+                    }`}
                   >
                     {m.text}
                   </div>
