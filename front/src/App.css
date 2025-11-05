@@ -16,6 +16,8 @@ body {
     'Apple SD Gothic Neo', sans-serif;
   background-color: #ffffff;
   color: #111111;
+  /* 전체 페이지 스크롤 허용 */
+  overflow-y: auto;
 }
 
 /* 공통 페이지 래퍼 */
@@ -39,15 +41,15 @@ body {
   justify-content: center;
   margin-top: 4vh;
   margin-bottom: 3vh;
-  padding: 0.4rem 1.2rem;   /* 클릭 영역 넓히기 */
+  padding: 0.4rem 1.2rem; /* 클릭 영역 넓히기 */
   border-radius: 0.8rem;
   background-color: transparent;
-  cursor: pointer;          /* 👈 손가락 모양(클릭) 커서 */
+  cursor: pointer; /* 손가락 모양(클릭) 커서 */
 }
 
-/* 살짝만 피드백 주고 싶으면 */
+/* 살짝만 피드백 */
 .logo-box:hover {
-  background-color: rgba(0, 0, 0, 0.03); /* 완전 투명 느낌의 박스 */
+  background-color: rgba(0, 0, 0, 0.03);
 }
 
 /* 실제 텍스트 */
@@ -60,13 +62,14 @@ body {
 .logo-text.small {
   font-size: clamp(1.8rem, 3.4vw, 2.6rem);
 }
+
 /* ===== 메인(홈) 페이지 ===== */
 
 .home-main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;     /* 가로 기준 가운데 */
+  align-items: center; /* 가로 기준 가운데 */
   justify-content: center; /* 세로 기준 가운데 */
   padding: 2vh 4vw 6vh;
   gap: 3vh;
@@ -112,19 +115,41 @@ body {
 
 /* ===== 채팅 페이지 ===== */
 
-.chat-main {
+/* 채팅 페이지: 전체 화면을 쓰되, 실제 내용은 chat-shell이 정함 */
+.chat-page {
   flex: 1;
   display: flex;
-  justify-content: center; /* 가로 가운데 */
-  align-items: center;     /* 세로 가운데 */
-  padding: 2vh 4vw 4vh;
 }
 
-/* 채팅 박스가 창 크기에 맞게 커졌다/작아졌다 */
+/* 좌측 여백 5% + 우측 고정 80px, 위/아래는 10% 여백.
+   높이는 뷰포트 기준 60vh로 고정해서, 그 안에 채팅 블록이 들어가게 함. */
+.chat-shell {
+  margin-left: 5vw;        /* 좌측 5% */
+  margin-right: 80px;      /* 우측 고정 너비 */
+  margin-top: 10vh;
+  margin-bottom: 10vh;
+  width: calc(100vw - 5vw - 80px); /* 남은 가로 영역 전체 사용 */
+  /* ✅ max-width 제거해서 화면이 넓어져도 같이 넓어지도록 */
+  height: calc(100vh - 20vh);      /* 위아래 10vh씩 뺀 높이(=60vh) */
+  min-width: 0;
+  display: flex;
+  flex-direction: column;  /* 위: 헤더, 아래: 채팅창 */
+  box-sizing: border-box;
+}
+
+/* 헤더 아래의 나머지 공간을 모두 채팅창에 할당 */
+.chat-main {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+}
+
+/* 전체 대화창(채팅 블록) */
 .chat-container {
-  width: min(90vw, 960px);
-  height: min(75vh, 640px);
-  min-height: 320px;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   border-radius: 0.9rem;
@@ -135,14 +160,14 @@ body {
   gap: 0.8rem;
 }
 
-/* 채팅 메시지 영역 */
+/* 채팅 메시지 영역: 내부 스크롤 사용 */
 .chat-messages {
   flex: 1;
-  overflow-y: auto;
-  padding-right: 0.3rem;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  overflow-y: auto;        /* 채팅창 자체 스크롤 */
+  padding-right: 0.3rem;
 }
 
 .chat-messages::-webkit-scrollbar {
@@ -160,6 +185,7 @@ body {
   border-radius: 0.9rem;
   font-size: clamp(0.82rem, 1.1vw, 0.9rem);
   line-height: 1.4;
+  word-break: break-word; /* 긴 문장도 줄 넘김 */
 }
 
 .message.bot {
@@ -174,11 +200,54 @@ body {
   color: #ffffff;
 }
 
+/* 로딩중 말풍선 (답변 준비 중) */
+.loading-message {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* "..." 애니메이션 점들 */
+.typing-dots {
+  display: inline-flex;
+  align-items: flex-end;
+}
+
+.typing-dots .dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: #666;
+  margin-left: 2px;
+  animation: typingBlink 1.2s infinite ease-in-out;
+}
+
+.typing-dots .dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.typing-dots .dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typingBlink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.2;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
 /* 입력 영역 */
 .chat-input-area {
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  margin-top: 1rem;
 }
 
 .chat-input {
@@ -206,8 +275,8 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  padding: 0;            /* 내부 여백 제거 */
-  overflow: hidden;      /* 아이콘이 밖으로 못 나가게 */
+  padding: 0; /* 내부 여백 제거 */
+  overflow: hidden; /* 아이콘이 밖으로 못 나가게 */
   transition: background-color 0.15s ease-out, transform 0.1s ease-out,
     box-shadow 0.1s ease-out;
 }
@@ -220,8 +289,8 @@ body {
 
 /* 아이콘을 버튼 기준으로 줄이기 */
 .send-icon {
-  width: 60%;           /* 버튼 가로의 60% */
-  height: 60%;          /* 버튼 세로의 60% */
+  width: 60%; /* 버튼 가로의 60% */
+  height: 60%; /* 버튼 세로의 60% */
   object-fit: contain;
   display: block;
 }
