@@ -45,10 +45,7 @@ function HomePage() {
   return (
     <div className="page home-page">
       <header className="app-header">
-        <div
-          className="logo-box"
-          onClick={() => window.location.reload()}
-        >
+        <div className="logo-box" onClick={() => window.location.reload()}>
           <h1 className="logo-text">챗봇</h1>
         </div>
       </header>
@@ -58,10 +55,7 @@ function HomePage() {
           <img className="hero-bg" src="/img/homepage.jpg" alt="홈 배경" />
         </div>
 
-        <button
-          className="start-chat-btn"
-          onClick={() => navigate("/chat")}
-        >
+        <button className="start-chat-btn" onClick={() => navigate("/chat")}>
           채팅 시작 하기
         </button>
       </main>
@@ -71,29 +65,18 @@ function HomePage() {
 
 // 에러 텍스트 -> 한글 안내 + 해결책 + 상세정보
 function makeErrorInfo(rawError) {
-  // 1) 어떤 형태로 들어와도 문자열로 통일
   const text =
     typeof rawError === "string" ? rawError : JSON.stringify(rawError, null, 2);
 
-  // 2) 에러 코드 추출 시도 (예: "Error code: 413", "status": 500 등)
   let errorCode = null;
   const codeMatch =
     text.match(/Error code:\s*(\d{3})/) ||
     text.match(/"status"\s*:\s*(\d{3})/) ||
     text.match(/"statusCode"\s*:\s*(\d{3})/);
-  if (codeMatch) {
-    errorCode = codeMatch[1];
-  }
+  if (codeMatch) errorCode = codeMatch[1];
 
-  // 공통으로 포함할 기본 정보
   const base = { detail: text, code: errorCode };
 
-  // ─────────────────────────────────────────────
-  //  A. LLM / Groq 관련 대표 오류
-  //    (1) 토큰/TPM/레이트 리밋 → (2) Request too large
-  // ─────────────────────────────────────────────
-
-  // A-1. 토큰/요청 속도 한도 초과 (TPM, rate_limit_exceeded, quota 등)
   if (
     text.includes("tokens per minute") ||
     text.includes("TPM") ||
@@ -103,7 +86,7 @@ function makeErrorInfo(rawError) {
     (text.toLowerCase().includes("quota") &&
       text.toLowerCase().includes("token"))
   ) {
-    const code = errorCode || "429"; // 실질적으로는 429 성격
+    const code = errorCode || "429";
     return {
       ...base,
       code,
@@ -115,7 +98,6 @@ function makeErrorInfo(rawError) {
     };
   }
 
-  // A-2. 입력 길이/페이로드가 너무 클 때 (Request too large, context length 등)
   if (
     text.includes("Request too large") ||
     text.includes("maximum context length") ||
@@ -133,9 +115,6 @@ function makeErrorInfo(rawError) {
     };
   }
 
-  // ─────────────────────────────────────────────
-  //  B. 네트워크 / 통신 계열
-  // ─────────────────────────────────────────────
   if (
     text.includes("Failed to fetch") ||
     text.includes("NetworkError") ||
@@ -155,11 +134,6 @@ function makeErrorInfo(rawError) {
     };
   }
 
-  // ─────────────────────────────────────────────
-  //  C. 인증 / 권한 문제
-  // ─────────────────────────────────────────────
-
-  // 401 Unauthorized
   if (errorCode === "401" || text.includes("Unauthorized")) {
     return {
       ...base,
@@ -172,7 +146,6 @@ function makeErrorInfo(rawError) {
     };
   }
 
-  // 403 Forbidden
   if (errorCode === "403" || text.includes("Forbidden")) {
     return {
       ...base,
@@ -185,11 +158,6 @@ function makeErrorInfo(rawError) {
     };
   }
 
-  // ─────────────────────────────────────────────
-  //  D. URL / 요청 형식 / 시간 관련
-  // ─────────────────────────────────────────────
-
-  // 404 Not Found
   if (errorCode === "404" || text.includes("Not Found")) {
     return {
       ...base,
@@ -202,7 +170,6 @@ function makeErrorInfo(rawError) {
     };
   }
 
-  // 400 Bad Request
   if (errorCode === "400" || text.includes("Bad Request")) {
     return {
       ...base,
@@ -215,7 +182,6 @@ function makeErrorInfo(rawError) {
     };
   }
 
-  // 408 Request Timeout
   if (errorCode === "408") {
     return {
       ...base,
@@ -228,7 +194,6 @@ function makeErrorInfo(rawError) {
     };
   }
 
-  // 413 Payload Too Large (TPM/토큰 패턴이 없는 일반적인 413)
   if (errorCode === "413") {
     return {
       ...base,
@@ -241,7 +206,6 @@ function makeErrorInfo(rawError) {
     };
   }
 
-  // 429 Too Many Requests (TPM 패턴이 없는 일반적인 429)
   if (errorCode === "429") {
     return {
       ...base,
@@ -253,11 +217,6 @@ function makeErrorInfo(rawError) {
     };
   }
 
-  // ─────────────────────────────────────────────
-  //  E. 서버 내부 오류 (5xx)
-  // ─────────────────────────────────────────────
-
-  // 500 Internal Server Error
   if (errorCode === "500" || text.includes("Internal Server Error")) {
     return {
       ...base,
@@ -270,7 +229,6 @@ function makeErrorInfo(rawError) {
     };
   }
 
-  // 502 Bad Gateway
   if (errorCode === "502") {
     return {
       ...base,
@@ -283,7 +241,6 @@ function makeErrorInfo(rawError) {
     };
   }
 
-  // 503 Service Unavailable
   if (errorCode === "503") {
     return {
       ...base,
@@ -296,7 +253,6 @@ function makeErrorInfo(rawError) {
     };
   }
 
-  // 504 Gateway Timeout
   if (errorCode === "504") {
     return {
       ...base,
@@ -309,9 +265,6 @@ function makeErrorInfo(rawError) {
     };
   }
 
-  // ─────────────────────────────────────────────
-  //  F. 그 밖의 알 수 없는 오류 (fallback)
-  // ─────────────────────────────────────────────
   return {
     ...base,
     title: errorCode
@@ -371,6 +324,44 @@ function ChatPage() {
     }
   }, [messages, loading]);
 
+  // 대화 삭제 (핵심 로직)
+  const handleDeleteConversation = (id) => {
+    setChatState((prev) => {
+      let filtered = prev.conversations.filter((c) => c.id !== id);
+      let newCurrentId = prev.currentId;
+
+      if (filtered.length === 0) {
+        const newConv = createNewConversation();
+        filtered = [newConv];
+        newCurrentId = newConv.id;
+      } else if (prev.currentId === id) {
+        newCurrentId = filtered[0].id;
+      }
+
+      return {
+        conversations: filtered,
+        currentId: newCurrentId,
+      };
+    });
+    setMenuOpenId(null);
+  };
+
+  // 팝업 창에서 보낸 삭제 확정 메시지 수신
+  useEffect(() => {
+    const onMessage = (event) => {
+      if (!event.data || typeof event.data !== "object") return;
+      if (
+        event.data.type === "DELETE_CONVERSATION_CONFIRM" &&
+        event.data.ok &&
+        event.data.id
+      ) {
+        handleDeleteConversation(event.data.id);
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
   // 새 채팅
   const handleNewChat = () => {
     const newConv = createNewConversation();
@@ -394,47 +385,186 @@ function ChatPage() {
     setMenuOpenId(null);
   };
 
-  // 대화 삭제
-  const handleDeleteConversation = (id) => {
-    setChatState((prev) => {
-      let filtered = prev.conversations.filter((c) => c.id !== id);
-      let newCurrentId = prev.currentId;
+// ===== 대화 삭제 요청: 새 창에서 [예] [아니요] 확인 =====
+const openDeleteConfirmWindow = (convId, convTitle) => {
+  try {
+    // 팝업 크기
+    const popupWidth = 420;
+    const popupHeight = 230;
 
-      if (filtered.length === 0) {
-        const newConv = createNewConversation();
-        filtered = [newConv];
-        newCurrentId = newConv.id;
-      } else if (prev.currentId === id) {
-        newCurrentId = filtered[0].id;
+    // 듀얼 모니터까지 고려해서 현재 창의 위치/크기 구하기
+    const dualScreenLeft =
+      window.screenLeft !== undefined ? window.screenLeft : window.screenX;
+    const dualScreenTop =
+      window.screenTop !== undefined ? window.screenTop : window.screenY;
+
+    const currentWidth =
+      window.innerWidth ||
+      document.documentElement.clientWidth ||
+      screen.width;
+    const currentHeight =
+      window.innerHeight ||
+      document.documentElement.clientHeight ||
+      screen.height;
+
+    // 정가운데 위치 계산
+    const left = dualScreenLeft + (currentWidth - popupWidth) / 2;
+    const top = dualScreenTop + (currentHeight - popupHeight) / 2;
+
+    // 팝업 옵션: 가운데 + 각종 툴바/주소창 최대한 숨기기
+    const features = [
+      `width=${popupWidth}`,
+      `height=${popupHeight}`,
+      `left=${left}`,
+      `top=${top}`,
+      "resizable=no",
+      "scrollbars=no",
+      "toolbar=no",
+      "location=no",
+      "menubar=no",
+      "status=no",
+    ].join(",");
+
+    const win = window.open("", "_blank", features);
+
+    // 팝업이 막혀 있으면 기본 confirm으로 대체
+    if (!win) {
+      const ok = window.confirm("정말 이 대화를 삭제하시겠습니까?");
+      if (ok) {
+        handleDeleteConversation(convId);
       }
+      return;
+    }
 
-      return {
-        conversations: filtered,
-        currentId: newCurrentId,
+    const escapeHtml = (str) =>
+      String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    win.document.write(`<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>대화 삭제 확인</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
+      background: #fafafa;
+      color: #111827;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    .wrapper {
+      width: 100%;
+      max-width: 360px;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 18px 20px 14px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.18);
+      border: 1px solid #e5e7eb;
+    }
+    .title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .desc {
+      font-size: 13px;
+      color: #4b5563;
+      margin-bottom: 14px;
+      line-height: 1.4;
+    }
+    .conv-title {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .btn-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    button {
+      border-radius: 999px;
+      font-size: 12px;
+      padding: 6px 14px;
+      border: none;
+      cursor: pointer;
+    }
+    #btn-no {
+      background: #f3f4f6;
+      color: #374151;
+    }
+    #btn-no:hover {
+      background: #e5e7eb;
+    }
+    #btn-yes {
+      background: #b3261e;
+      color: #ffffff;
+    }
+    #btn-yes:hover {
+      background: #991b1b;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="title">대화 삭제</div>
+    <div class="desc">이 대화를 정말 삭제하시겠습니까? 삭제하면 되돌릴 수 없습니다.</div>
+    <div class="conv-title">대화 제목: ${escapeHtml(convTitle || "제목 없음")}</div>
+    <div class="btn-row">
+      <button id="btn-no">아니요</button>
+      <button id="btn-yes">예</button>
+    </div>
+  </div>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('btn-yes').onclick = function () {
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage(
+            { type: 'DELETE_CONVERSATION_CONFIRM', ok: true, id: '${convId}' },
+            '*'
+          );
+        }
+        window.close();
+      };
+      document.getElementById('btn-no').onclick = function () {
+        window.close();
       };
     });
-    setMenuOpenId(null);
-  };
+  </script>
+</body>
+</html>`);
+    win.document.close();
+  } catch (e) {
+    console.error("삭제 확인 창 생성 실패:", e);
+    const ok = window.confirm("정말 이 대화를 삭제하시겠습니까?");
+    if (ok) {
+      handleDeleteConversation(convId);
+    }
+  }
+};
 
-  // 🔹 대화 이름 변경
+
+  // 대화 이름 변경
   const handleRenameConversation = (id) => {
     const target = conversations.find((c) => c.id === id);
     if (!target) return;
 
     const currentTitle = target.title || "새 대화";
-    const nextTitle = window.prompt(
-      "새로운 대화 제목을 입력하세요.",
-      currentTitle
-    );
-
-    // 취소 눌렀을 때
-    if (nextTitle === null) return;
-
+    const nextTitle = window.prompt("새로운 대화 제목을 입력하세요.", currentTitle);
+    if (nextTitle === null) return; // 취소
     const trimmed = nextTitle.trim();
-    if (!trimmed) {
-      // 빈 문자열이면 변경하지 않고 종료 (원하면 alert 추가 가능)
-      return;
-    }
+    if (!trimmed) return; // 공백만 입력 시 무시
 
     setChatState((prev) => ({
       ...prev,
@@ -454,10 +584,8 @@ function ChatPage() {
   };
 
   const handleDragOver = (e, id) => {
-    e.preventDefault(); // drop 허용
-    if (id !== dragOverId) {
-      setDragOverId(id);
-    }
+    e.preventDefault();
+    if (id !== dragOverId) setDragOverId(id);
   };
 
   const handleDrop = (e, id) => {
@@ -487,7 +615,6 @@ function ChatPage() {
     setDraggingId(null);
     setDragOverId(null);
   };
-  // =======================================
 
   // Flask 서버로 질문 보내기
   const sendMessage = async () => {
@@ -524,9 +651,7 @@ function ChatPage() {
     try {
       const res = await fetch("http://127.0.0.1:5000/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: trimmed }),
       });
 
@@ -545,8 +670,7 @@ function ChatPage() {
               {
                 role: "bot",
                 text:
-                  "죄송합니다. 오류 때문에 지금은 답변을 생성하지 못했습니다. " +
-                  "화면 가운데 나타난 오류 안내 창을 확인해 주세요.",
+                  "죄송합니다. 오류 때문에 지금은 답변을 생성하지 못했습니다. 화면 가운데 나타난 오류 안내 창을 확인해 주세요.",
               },
             ];
             return { ...conv, messages: newMessages, updatedAt: now };
@@ -561,10 +685,7 @@ function ChatPage() {
           const now = Date.now();
           const updated = prev.conversations.map((conv) => {
             if (conv.id !== prev.currentId) return conv;
-            const newMessages = [
-              ...conv.messages,
-              { role: "bot", text: answer },
-            ];
+            const newMessages = [...conv.messages, { role: "bot", text: answer }];
             return { ...conv, messages: newMessages, updatedAt: now };
           });
           return { ...prev, conversations: updated };
@@ -608,69 +729,49 @@ function ChatPage() {
   const openErrorDetailWindow = () => {
     if (!errorInfo) return;
     try {
-      const win = window.open(
-        "",
-        "_blank",
-        "width=720,height=600,scrollbars=yes"
-      );
+      const win = window.open("", "_blank", "width=720,height=600,scrollbars=yes");
       if (!win) {
-        alert(
-          "팝업 차단으로 인해 새로운 창을 열 수 없습니다. 브라우저 팝업 설정을 확인해 주세요."
-        );
+        alert("팝업 차단으로 인해 새로운 창을 열 수 없습니다. 브라우저 팝업 설정을 확인해 주세요.");
         return;
       }
 
       const escapeHtml = (str) =>
-        String(str)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt/")
-          .replace(/>/g, "&gt;");
+        String(str).replace(/&/g, "&amp;").replace(/</g, "&lt/").replace(/>/g, "&gt;");
 
       win.document.write(`<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <title>오류 상세 정보</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
-      padding: 16px;
-      white-space: pre-wrap;
-      background: #ffffff;
-      color: #222;
-    }
-    h1 { font-size: 18px; margin-bottom: 8px; }
-    h2 { font-size: 14px; margin-top: 16px; margin-bottom: 4px; }
-    p  { margin: 4px 0; }
-    pre {
-      font-size: 12px;
-      background: #f7f7f7;
-      padding: 12px;
-      border-radius: 8px;
-      max-height: 420px;
-      overflow-y: auto;
-      overflow-x: hidden;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-  </style>
-</head>
-<body>
+<html lang="ko"><head><meta charset="utf-8" />
+<title>오류 상세 정보</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
+         padding:16px; white-space:pre-wrap; background:#fff; color:#222; }
+  h1 { font-size:18px; margin-bottom:8px; } h2 { font-size:14px; margin:16px 0 4px; }
+  p { margin:4px 0; }
+  pre { font-size:12px; background:#f7f7f7; padding:12px; border-radius:8px;
+        max-height:420px; overflow-y:auto; overflow-x:hidden; white-space:pre-wrap; word-break:break-all; }
+</style>
+</head><body>
   <h1>${escapeHtml(errorInfo.title)}</h1>
   <p>${escapeHtml(errorInfo.guide)}</p>
   <p style="color:#666;">${escapeHtml(errorInfo.hint)}</p>
   <h2>원본 오류 메시지</h2>
   <pre>${escapeHtml(errorInfo.detail)}</pre>
-</body>
-</html>`);
+</body></html>`);
       win.document.close();
     } catch (e) {
       console.error("오류 상세 창 생성 중 오류:", e);
     }
   };
 
-  return (
-    <div className="page chat-page">
+    return (
+      <div
+        className="page chat-page"
+        onClick={() => {
+          // 화면 아무 곳이나 클릭하면 더보기 메뉴 닫기
+          if (menuOpenId !== null) {
+            setMenuOpenId(null);
+          }
+        }}
+      >
       <div className="chat-layout">
         {/* ===== 좌측: 대화 목록 사이드바 ===== */}
         <aside className="chat-sidebar">
@@ -715,18 +816,24 @@ function ChatPage() {
                     className="sidebar-chat-more"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setMenuOpenId((prev) =>
-                        prev === conv.id ? null : conv.id
-                      );
+                      setMenuOpenId((prev) => (prev === conv.id ? null : conv.id));
                     }}
                   >
                     ⋯
                   </button>
 
                   {menuOpenId === conv.id && (
-                    <div className="sidebar-chat-menu">
+                    <div
+                      className="sidebar-chat-menu"
+                      onClick={(e) => {
+                        // 메뉴 안을 클릭할 때는 바깥 onClick으로 이벤트 안 올라가게
+                        e.stopPropagation();
+                      }}
+                    >
                       <button
-                        onClick={() => handleDeleteConversation(conv.id)}
+                        onClick={() =>
+                          openDeleteConfirmWindow(conv.id, conv.title)
+                        }
                       >
                         대화 삭제
                       </button>
@@ -766,9 +873,7 @@ function ChatPage() {
                 {loading && (
                   <div className="message bot loading-message">
                     <div className="loading-main-row">
-                      <span className="loading-title">
-                        챗봇이 답변을 준비하고 있어요
-                      </span>
+                      <span className="loading-title">챗봇이 답변을 준비하고 있어요</span>
                       <span className="typing-dots">
                         <span className="dot" />
                         <span className="dot" />
@@ -776,8 +881,7 @@ function ChatPage() {
                       </span>
                     </div>
                     <div className="loading-subtext">
-                      질문을 이해하고, 관련 데이터를 검색한 뒤
-                      가장 알맞은 내용을 정리하고 있습니다.
+                      질문을 이해하고, 관련 데이터를 검색한 뒤 가장 알맞은 내용을 정리하고 있습니다.
                     </div>
                   </div>
                 )}
@@ -789,26 +893,14 @@ function ChatPage() {
                 <input
                   className="chat-input"
                   type="text"
-                  placeholder={
-                    loading
-                      ? "응답을 기다리는 중입니다..."
-                      : "메시지를 입력하세요..."
-                  }
+                  placeholder={loading ? "응답을 기다리는 중입니다..." : "메시지를 입력하세요..."}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   disabled={loading}
                 />
-                <button
-                  className="chat-send-btn"
-                  onClick={sendMessage}
-                  disabled={loading}
-                >
-                  <img
-                    src="/img/trans_message.png"
-                    alt="전송"
-                    className="send-icon"
-                  />
+                <button className="chat-send-btn" onClick={sendMessage} disabled={loading}>
+                  <img src="/img/trans_message.png" alt="전송" className="send-icon" />
                 </button>
               </div>
             </div>
@@ -829,10 +921,7 @@ function ChatPage() {
           <div className="error-modal">
             <div className="error-modal-header">
               <span className="error-modal-title">{errorInfo.title}</span>
-              <button
-                className="error-modal-close"
-                onClick={() => setErrorInfo(null)}
-              >
+              <button className="error-modal-close" onClick={() => setErrorInfo(null)}>
                 ✕
               </button>
             </div>
@@ -841,16 +930,10 @@ function ChatPage() {
               <p className="error-modal-hint">{errorInfo.hint}</p>
             </div>
             <div className="error-modal-footer">
-              <button
-                className="error-modal-secondary"
-                onClick={() => setErrorInfo(null)}
-              >
+              <button className="error-modal-secondary" onClick={() => setErrorInfo(null)}>
                 닫기
               </button>
-              <button
-                className="error-modal-primary"
-                onClick={openErrorDetailWindow}
-              >
+              <button className="error-modal-primary" onClick={openErrorDetailWindow}>
                 원본 오류 상세 새 창에서 보기
               </button>
             </div>
