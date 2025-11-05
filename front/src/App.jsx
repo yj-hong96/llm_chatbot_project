@@ -1,4 +1,5 @@
-// 메인/채팅 라우팅 + 대화 상태/저장 + 사이드바/드래그 정렬 + 로딩/에러 모달 JSX
+// 메인/채팅 라우팅 + 대화 상태/저장 + 사이드바/드래그 정렬
+// + 로딩/에러 모달 + 삭제/이름변경 모달 + 사이드바 토글
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
@@ -73,7 +74,9 @@ function makeErrorInfo(rawError) {
     text.match(/Error code:\s*(\d{3})/) ||
     text.match(/"status"\s*:\s*(\d{3})/) ||
     text.match(/"statusCode"\s*:\s*(\d{3})/);
-  if (codeMatch) errorCode = codeMatch[1];
+  if (codeMatch) {
+    errorCode = codeMatch[1];
+  }
 
   const base = { detail: text, code: errorCode };
 
@@ -294,6 +297,11 @@ function ChatPage() {
   const [loading, setLoading] = useState(false);
   const [errorInfo, setErrorInfo] = useState(null); // 에러 모달
   const [menuOpenId, setMenuOpenId] = useState(null); // ... 메뉴 열린 대화 ID
+  const [confirmDelete, setConfirmDelete] = useState(null); // 삭제 확인 모달
+  const [renameInfo, setRenameInfo] = useState(null); // 이름 변경 모달 {id, value}
+  const [sidebarOpen, setSidebarOpen] = useState(false); // 🔹 왼쪽 상단 고정 사이드바 토글
+    // 🔹 사이드바 접힘 상태
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // 드래그 상태
   const [draggingId, setDraggingId] = useState(null);
@@ -324,42 +332,11 @@ function ChatPage() {
     }
   }, [messages, loading]);
 
-  // 대화 삭제 (핵심 로직)
-  const handleDeleteConversation = (id) => {
-    setChatState((prev) => {
-      let filtered = prev.conversations.filter((c) => c.id !== id);
-      let newCurrentId = prev.currentId;
-
-      if (filtered.length === 0) {
-        const newConv = createNewConversation();
-        filtered = [newConv];
-        newCurrentId = newConv.id;
-      } else if (prev.currentId === id) {
-        newCurrentId = filtered[0].id;
-      }
-
-      return {
-        conversations: filtered,
-        currentId: newCurrentId,
-      };
-    });
-    setMenuOpenId(null);
-  };
-
-  // 팝업 창에서 보낸 삭제 확정 메시지 수신
+  // 빈 곳 클릭 시 ... 메뉴 닫기
   useEffect(() => {
-    const onMessage = (event) => {
-      if (!event.data || typeof event.data !== "object") return;
-      if (
-        event.data.type === "DELETE_CONVERSATION_CONFIRM" &&
-        event.data.ok &&
-        event.data.id
-      ) {
-        handleDeleteConversation(event.data.id);
-      }
-    };
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
+    const handleWindowClick = () => setMenuOpenId(null);
+    window.addEventListener("click", handleWindowClick);
+    return () => window.removeEventListener("click", handleWindowClick);
   }, []);
 
   // 새 채팅
@@ -385,186 +362,32 @@ function ChatPage() {
     setMenuOpenId(null);
   };
 
-// ===== 대화 삭제 요청: 새 창에서 [예] [아니요] 확인 =====
-const openDeleteConfirmWindow = (convId, convTitle) => {
-  try {
-    // 팝업 크기
-    const popupWidth = 420;
-    const popupHeight = 230;
+  // 대화 삭제
+  const handleDeleteConversation = (id) => {
+    setChatState((prev) => {
+      let filtered = prev.conversations.filter((c) => c.id !== id);
+      let newCurrentId = prev.currentId;
 
-    // 듀얼 모니터까지 고려해서 현재 창의 위치/크기 구하기
-    const dualScreenLeft =
-      window.screenLeft !== undefined ? window.screenLeft : window.screenX;
-    const dualScreenTop =
-      window.screenTop !== undefined ? window.screenTop : window.screenY;
-
-    const currentWidth =
-      window.innerWidth ||
-      document.documentElement.clientWidth ||
-      screen.width;
-    const currentHeight =
-      window.innerHeight ||
-      document.documentElement.clientHeight ||
-      screen.height;
-
-    // 정가운데 위치 계산
-    const left = dualScreenLeft + (currentWidth - popupWidth) / 2;
-    const top = dualScreenTop + (currentHeight - popupHeight) / 2;
-
-    // 팝업 옵션: 가운데 + 각종 툴바/주소창 최대한 숨기기
-    const features = [
-      `width=${popupWidth}`,
-      `height=${popupHeight}`,
-      `left=${left}`,
-      `top=${top}`,
-      "resizable=no",
-      "scrollbars=no",
-      "toolbar=no",
-      "location=no",
-      "menubar=no",
-      "status=no",
-    ].join(",");
-
-    const win = window.open("", "_blank", features);
-
-    // 팝업이 막혀 있으면 기본 confirm으로 대체
-    if (!win) {
-      const ok = window.confirm("정말 이 대화를 삭제하시겠습니까?");
-      if (ok) {
-        handleDeleteConversation(convId);
+      if (filtered.length === 0) {
+        const newConv = createNewConversation();
+        filtered = [newConv];
+        newCurrentId = newConv.id;
+      } else if (prev.currentId === id) {
+        newCurrentId = filtered[0].id;
       }
-      return;
-    }
 
-    const escapeHtml = (str) =>
-      String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-
-    win.document.write(`<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <title>대화 삭제 확인</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
-      background: #fafafa;
-      color: #111827;
-      padding: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
-    .wrapper {
-      width: 100%;
-      max-width: 360px;
-      background: #ffffff;
-      border-radius: 12px;
-      padding: 18px 20px 14px;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.18);
-      border: 1px solid #e5e7eb;
-    }
-    .title {
-      font-size: 15px;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-    .desc {
-      font-size: 13px;
-      color: #4b5563;
-      margin-bottom: 14px;
-      line-height: 1.4;
-    }
-    .conv-title {
-      font-size: 12px;
-      color: #6b7280;
-      margin-bottom: 12px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .btn-row {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-    }
-    button {
-      border-radius: 999px;
-      font-size: 12px;
-      padding: 6px 14px;
-      border: none;
-      cursor: pointer;
-    }
-    #btn-no {
-      background: #f3f4f6;
-      color: #374151;
-    }
-    #btn-no:hover {
-      background: #e5e7eb;
-    }
-    #btn-yes {
-      background: #b3261e;
-      color: #ffffff;
-    }
-    #btn-yes:hover {
-      background: #991b1b;
-    }
-  </style>
-</head>
-<body>
-  <div class="wrapper">
-    <div class="title">대화 삭제</div>
-    <div class="desc">이 대화를 정말 삭제하시겠습니까? 삭제하면 되돌릴 수 없습니다.</div>
-    <div class="conv-title">대화 제목: ${escapeHtml(convTitle || "제목 없음")}</div>
-    <div class="btn-row">
-      <button id="btn-no">아니요</button>
-      <button id="btn-yes">예</button>
-    </div>
-  </div>
-
-  <script>
-    window.addEventListener('DOMContentLoaded', function () {
-      document.getElementById('btn-yes').onclick = function () {
-        if (window.opener && !window.opener.closed) {
-          window.opener.postMessage(
-            { type: 'DELETE_CONVERSATION_CONFIRM', ok: true, id: '${convId}' },
-            '*'
-          );
-        }
-        window.close();
-      };
-      document.getElementById('btn-no').onclick = function () {
-        window.close();
+      return {
+        conversations: filtered,
+        currentId: newCurrentId,
       };
     });
-  </script>
-</body>
-</html>`);
-    win.document.close();
-  } catch (e) {
-    console.error("삭제 확인 창 생성 실패:", e);
-    const ok = window.confirm("정말 이 대화를 삭제하시겠습니까?");
-    if (ok) {
-      handleDeleteConversation(convId);
-    }
-  }
-};
+    setMenuOpenId(null);
+  };
 
-
-  // 대화 이름 변경
-  const handleRenameConversation = (id) => {
-    const target = conversations.find((c) => c.id === id);
-    if (!target) return;
-
-    const currentTitle = target.title || "새 대화";
-    const nextTitle = window.prompt("새로운 대화 제목을 입력하세요.", currentTitle);
-    if (nextTitle === null) return; // 취소
-    const trimmed = nextTitle.trim();
-    if (!trimmed) return; // 공백만 입력 시 무시
+  // 실제 이름 변경 로직
+  const handleRenameConversation = (id, newTitle) => {
+    const trimmed = (newTitle || "").trim();
+    if (!trimmed) return;
 
     setChatState((prev) => ({
       ...prev,
@@ -575,7 +398,7 @@ const openDeleteConfirmWindow = (convId, convTitle) => {
     setMenuOpenId(null);
   };
 
-  // ===== 드래그 & 드롭으로 순서 변경 =====
+  // 드래그 & 드롭으로 순서 변경
   const handleDragStart = (e, id) => {
     setDraggingId(id);
     setDragOverId(null);
@@ -585,7 +408,9 @@ const openDeleteConfirmWindow = (convId, convTitle) => {
 
   const handleDragOver = (e, id) => {
     e.preventDefault();
-    if (id !== dragOverId) setDragOverId(id);
+    if (id !== dragOverId) {
+      setDragOverId(id);
+    }
   };
 
   const handleDrop = (e, id) => {
@@ -626,7 +451,6 @@ const openDeleteConfirmWindow = (convId, convTitle) => {
     setLoading(true);
     setMenuOpenId(null);
 
-    // 사용자 메시지 추가 + 제목 갱신
     setChatState((prev) => {
       const now = Date.now();
       const updated = prev.conversations.map((conv) => {
@@ -651,7 +475,9 @@ const openDeleteConfirmWindow = (convId, convTitle) => {
     try {
       const res = await fetch("http://127.0.0.1:5000/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ message: trimmed }),
       });
 
@@ -670,7 +496,8 @@ const openDeleteConfirmWindow = (convId, convTitle) => {
               {
                 role: "bot",
                 text:
-                  "죄송합니다. 오류 때문에 지금은 답변을 생성하지 못했습니다. 화면 가운데 나타난 오류 안내 창을 확인해 주세요.",
+                  "죄송합니다. 오류 때문에 지금은 답변을 생성하지 못했습니다. " +
+                  "화면 가운데 나타난 오류 안내 창을 확인해 주세요.",
               },
             ];
             return { ...conv, messages: newMessages, updatedAt: now };
@@ -685,7 +512,10 @@ const openDeleteConfirmWindow = (convId, convTitle) => {
           const now = Date.now();
           const updated = prev.conversations.map((conv) => {
             if (conv.id !== prev.currentId) return conv;
-            const newMessages = [...conv.messages, { role: "bot", text: answer }];
+            const newMessages = [
+              ...conv.messages,
+              { role: "bot", text: answer },
+            ];
             return { ...conv, messages: newMessages, updatedAt: now };
           });
           return { ...prev, conversations: updated };
@@ -729,129 +559,199 @@ const openDeleteConfirmWindow = (convId, convTitle) => {
   const openErrorDetailWindow = () => {
     if (!errorInfo) return;
     try {
-      const win = window.open("", "_blank", "width=720,height=600,scrollbars=yes");
+      const win = window.open(
+        "",
+        "_blank",
+        "width=720,height=600,scrollbars=yes"
+      );
       if (!win) {
-        alert("팝업 차단으로 인해 새로운 창을 열 수 없습니다. 브라우저 팝업 설정을 확인해 주세요.");
+        alert(
+          "팝업 차단으로 인해 새로운 창을 열 수 없습니다. 브라우저 팝업 설정을 확인해 주세요."
+        );
         return;
       }
 
       const escapeHtml = (str) =>
-        String(str).replace(/&/g, "&amp;").replace(/</g, "&lt/").replace(/>/g, "&gt;");
+        String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
 
       win.document.write(`<!DOCTYPE html>
-<html lang="ko"><head><meta charset="utf-8" />
-<title>오류 상세 정보</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
-         padding:16px; white-space:pre-wrap; background:#fff; color:#222; }
-  h1 { font-size:18px; margin-bottom:8px; } h2 { font-size:14px; margin:16px 0 4px; }
-  p { margin:4px 0; }
-  pre { font-size:12px; background:#f7f7f7; padding:12px; border-radius:8px;
-        max-height:420px; overflow-y:auto; overflow-x:hidden; white-space:pre-wrap; word-break:break-all; }
-</style>
-</head><body>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>오류 상세 정보</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
+      padding: 16px;
+      white-space: pre-wrap;
+      background: #ffffff;
+      color: #222;
+    }
+    h1 { font-size: 18px; margin-bottom: 8px; }
+    h2 { font-size: 14px; margin-top: 16px; margin-bottom: 4px; }
+    p  { margin: 4px 0; }
+    pre {
+      font-size: 12px;
+      background: #f7f7f7;
+      padding: 12px;
+      border-radius: 8px;
+      max-height: 420px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
   <h1>${escapeHtml(errorInfo.title)}</h1>
   <p>${escapeHtml(errorInfo.guide)}</p>
   <p style="color:#666;">${escapeHtml(errorInfo.hint)}</p>
   <h2>원본 오류 메시지</h2>
   <pre>${escapeHtml(errorInfo.detail)}</pre>
-</body></html>`);
+</body>
+</html>`);
       win.document.close();
     } catch (e) {
       console.error("오류 상세 창 생성 중 오류:", e);
     }
   };
 
-    return (
-      <div
-        className="page chat-page"
-        onClick={() => {
-          // 화면 아무 곳이나 클릭하면 더보기 메뉴 닫기
-          if (menuOpenId !== null) {
-            setMenuOpenId(null);
-          }
+  return (
+    <div className="page chat-page">
+      {/* 🔹 왼쪽 상단 고정 사이드바 토글 버튼 */}
+      <button
+        className="sidebar-toggle-btn"
+        onClick={(e) => {
+          e.stopPropagation();
+          setSidebarOpen((prev) => !prev);
         }}
       >
-      <div className="chat-layout">
+        
+      </button>
+
+ <div className="chat-layout">
         {/* ===== 좌측: 대화 목록 사이드바 ===== */}
-        <aside className="chat-sidebar">
+        <aside
+          className={
+            "chat-sidebar" + (sidebarCollapsed ? " collapsed" : "")
+          }
+        >
           <div className="sidebar-top">
-            <button className="sidebar-new-chat-btn" onClick={handleNewChat}>
-              + 새 채팅
+            {/* 햄버거 메뉴 아이콘 – 항상 좌측 상단 고정 */}
+            <button
+              className="sidebar-menu-toggle"
+              onClick={() => setSidebarCollapsed((prev) => !prev)}
+            >
+              <img src="/img/menu.png" alt="사이드바 접기" />
             </button>
+
+            {/* 사이드바가 펼쳐져 있을 때만 '새 채팅' 버튼 노출 */}
+            {!sidebarCollapsed && (
+              <button
+                className="sidebar-new-chat-btn"
+                onClick={handleNewChat}
+              >
+                새 채팅
+              </button>
+            )}
           </div>
 
-          <div className="sidebar-section-title">채팅</div>
+          {/* 펼쳐져 있을 때만 채팅 목록 영역 보이기 */}
+          {!sidebarCollapsed && (
+            <>
+              <div className="sidebar-section-title">채팅</div>
 
-          <div className="sidebar-chat-list">
-            {conversations.map((conv, idx) => {
-              const isActive = conv.id === currentId;
-              const isDragging = conv.id === draggingId;
-              const isDragOver = conv.id === dragOverId;
+              <div className="sidebar-chat-list">
+                {conversations.map((conv, idx) => {
+                  const isActive = conv.id === currentId;
+                  const isDragging = conv.id === draggingId;
+                  const isDragOver = conv.id === dragOverId;
 
-              return (
-                <div
-                  key={conv.id}
-                  className={
-                    "sidebar-chat-item" +
-                    (isActive ? " active" : "") +
-                    (isDragging ? " dragging" : "") +
-                    (isDragOver ? " drag-over" : "")
-                  }
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, conv.id)}
-                  onDragOver={(e) => handleDragOver(e, conv.id)}
-                  onDrop={(e) => handleDrop(e, conv.id)}
-                  onDragEnd={handleDragEnd}
-                >
-                  <button
-                    className="sidebar-chat-main"
-                    onClick={() => handleSelectConversation(conv.id)}
-                  >
-                    <span className="sidebar-chat-index">{idx + 1}</span>
-                    <span className="sidebar-chat-title">{conv.title}</span>
-                  </button>
-
-                  <button
-                    className="sidebar-chat-more"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMenuOpenId((prev) => (prev === conv.id ? null : conv.id));
-                    }}
-                  >
-                    ⋯
-                  </button>
-
-                  {menuOpenId === conv.id && (
+                  return (
                     <div
-                      className="sidebar-chat-menu"
-                      onClick={(e) => {
-                        // 메뉴 안을 클릭할 때는 바깥 onClick으로 이벤트 안 올라가게
-                        e.stopPropagation();
-                      }}
+                      key={conv.id}
+                      className={
+                        "sidebar-chat-item" +
+                        (isActive ? " active" : "") +
+                        (isDragging ? " dragging" : "") +
+                        (isDragOver ? " drag-over" : "")
+                      }
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, conv.id)}
+                      onDragOver={(e) => handleDragOver(e, conv.id)}
+                      onDrop={(e) => handleDrop(e, conv.id)}
+                      onDragEnd={handleDragEnd}
                     >
                       <button
-                        onClick={() =>
-                          openDeleteConfirmWindow(conv.id, conv.title)
-                        }
+                        className="sidebar-chat-main"
+                        onClick={() => handleSelectConversation(conv.id)}
                       >
-                        대화 삭제
+                        <span className="sidebar-chat-index">
+                          {idx + 1}
+                        </span>
+                        <span className="sidebar-chat-title">
+                          {conv.title}
+                        </span>
                       </button>
+
                       <button
-                        onClick={() => handleRenameConversation(conv.id)}
+                        className="sidebar-chat-more"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuOpenId((prev) =>
+                            prev === conv.id ? null : conv.id
+                          );
+                        }}
                       >
-                        이름 변경하기
+                        ⋯
                       </button>
+
+                      {menuOpenId === conv.id && (
+                        <div className="sidebar-chat-menu">
+                          <button
+                            onClick={() =>
+                              openDeleteConfirmModal(conv.id, conv.title)
+                            }
+                          >
+                            대화 삭제
+                          </button>
+                          <button
+                            onClick={() =>
+                              openRenameModal(conv.id, conv.title)
+                            }
+                          >
+                            이름 변경하기
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </aside>
 
         {/* ===== 우측: 실제 챗봇 화면 ===== */}
-        <div className="chat-shell">
+        <div
+          className="chat-shell"
+          style={
+            sidebarOpen
+              ? undefined
+              : {
+                  // 사이드바 없을 때는 전체 폭 더 넓게 사용
+                  marginLeft: "5vw",
+                  marginRight: "80px",
+                  marginTop: "10vh",
+                  marginBottom: "10vh",
+                  width: "calc(100vw - 5vw - 80px)",
+                }
+          }
+        >
           <header className="app-header chat-header">
             <div className="logo-box" onClick={() => navigate("/")}>
               <h1 className="logo-text small">챗봇</h1>
@@ -873,7 +773,9 @@ const openDeleteConfirmWindow = (convId, convTitle) => {
                 {loading && (
                   <div className="message bot loading-message">
                     <div className="loading-main-row">
-                      <span className="loading-title">챗봇이 답변을 준비하고 있어요</span>
+                      <span className="loading-title">
+                        챗봇이 답변을 준비하고 있어요
+                      </span>
                       <span className="typing-dots">
                         <span className="dot" />
                         <span className="dot" />
@@ -881,7 +783,8 @@ const openDeleteConfirmWindow = (convId, convTitle) => {
                       </span>
                     </div>
                     <div className="loading-subtext">
-                      질문을 이해하고, 관련 데이터를 검색한 뒤 가장 알맞은 내용을 정리하고 있습니다.
+                      질문을 이해하고, 관련 데이터를 검색한 뒤 가장 알맞은
+                      내용을 정리하고 있습니다.
                     </div>
                   </div>
                 )}
@@ -893,20 +796,132 @@ const openDeleteConfirmWindow = (convId, convTitle) => {
                 <input
                   className="chat-input"
                   type="text"
-                  placeholder={loading ? "응답을 기다리는 중입니다..." : "메시지를 입력하세요..."}
+                  placeholder={
+                    loading
+                      ? "응답을 기다리는 중입니다..."
+                      : "메시지를 입력하세요..."
+                  }
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   disabled={loading}
                 />
-                <button className="chat-send-btn" onClick={sendMessage} disabled={loading}>
-                  <img src="/img/trans_message.png" alt="전송" className="send-icon" />
+                <button
+                  className="chat-send-btn"
+                  onClick={sendMessage}
+                  disabled={loading}
+                >
+                  <img
+                    src="/img/trans_message.png"
+                    alt="전송"
+                    className="send-icon"
+                  />
                 </button>
               </div>
             </div>
           </main>
         </div>
       </div>
+
+      {/* ===== 대화 삭제 확인 모달 ===== */}
+      {confirmDelete && (
+        <div
+          className="error-modal-overlay"
+          onClick={(e) => {
+            if (e.target.classList.contains("error-modal-overlay")) {
+              setConfirmDelete(null);
+            }
+          }}
+        >
+          <div className="error-modal">
+            <div className="error-modal-header">
+              <span className="error-modal-title">대화 삭제</span>
+            </div>
+            <div className="error-modal-body">
+              <p className="error-modal-guide">
+                이 대화를 정말 삭제하시겠습니까? 삭제하면 되돌릴 수 없습니다.
+              </p>
+              <p className="error-modal-hint">
+                대화 제목: {confirmDelete.title || "제목 없음"}
+              </p>
+            </div>
+            <div className="error-modal-footer">
+              <button
+                className="error-modal-secondary"
+                onClick={() => setConfirmDelete(null)}
+              >
+                아니요
+              </button>
+              <button
+                className="error-modal-primary"
+                onClick={() => {
+                  handleDeleteConversation(confirmDelete.id);
+                  setConfirmDelete(null);
+                }}
+              >
+                예
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== 대화 이름 변경 모달 ===== */}
+      {renameInfo && (
+        <div
+          className="error-modal-overlay"
+          onClick={(e) => {
+            if (e.target.classList.contains("error-modal-overlay")) {
+              setRenameInfo(null);
+            }
+          }}
+        >
+          <div className="error-modal">
+            <div className="error-modal-header">
+              <span className="error-modal-title">대화 이름 변경</span>
+            </div>
+            <div className="error-modal-body">
+              <p className="error-modal-guide">
+                대화의 새로운 제목을 입력해 주세요.
+              </p>
+              <input
+                type="text"
+                value={renameInfo.value}
+                onChange={(e) =>
+                  setRenameInfo((prev) => ({ ...prev, value: e.target.value }))
+                }
+                style={{
+                  width: "100%",
+                  marginTop: "0.5rem",
+                  padding: "0.45rem 0.6rem",
+                  borderRadius: "0.5rem",
+                  border: "1px solid #d1d5db",
+                  fontSize: "0.85rem",
+                  outline: "none",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+            <div className="error-modal-footer">
+              <button
+                className="error-modal-secondary"
+                onClick={() => setRenameInfo(null)}
+              >
+                취소
+              </button>
+              <button
+                className="error-modal-primary"
+                onClick={() => {
+                  handleRenameConversation(renameInfo.id, renameInfo.value);
+                  setRenameInfo(null);
+                }}
+              >
+                변경
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ===== 가운데 에러 모달 ===== */}
       {errorInfo && (
@@ -921,7 +936,10 @@ const openDeleteConfirmWindow = (convId, convTitle) => {
           <div className="error-modal">
             <div className="error-modal-header">
               <span className="error-modal-title">{errorInfo.title}</span>
-              <button className="error-modal-close" onClick={() => setErrorInfo(null)}>
+              <button
+                className="error-modal-close"
+                onClick={() => setErrorInfo(null)}
+              >
                 ✕
               </button>
             </div>
@@ -930,10 +948,16 @@ const openDeleteConfirmWindow = (convId, convTitle) => {
               <p className="error-modal-hint">{errorInfo.hint}</p>
             </div>
             <div className="error-modal-footer">
-              <button className="error-modal-secondary" onClick={() => setErrorInfo(null)}>
+              <button
+                className="error-modal-secondary"
+                onClick={() => setErrorInfo(null)}
+              >
                 닫기
               </button>
-              <button className="error-modal-primary" onClick={openErrorDetailWindow}>
+              <button
+                className="error-modal-primary"
+                onClick={openErrorDetailWindow}
+              >
                 원본 오류 상세 새 창에서 보기
               </button>
             </div>

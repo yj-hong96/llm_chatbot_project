@@ -193,6 +193,20 @@ body {
   min-width: 0;
 }
 
+/* 사이드바가 접힌 상태 */
+.chat-sidebar.collapsed {
+  flex: 0 0 64px;      /* 좁은 세로 바로 축소 */
+  align-items: center; /* 안의 내용 중앙 정렬 */
+}
+
+/* 접힌 상태에서는 상단만 살짝 보이게 */
+.chat-sidebar.collapsed .sidebar-top {
+  justify-content: center;
+  border-bottom: none;
+}
+
+
+
 @media (max-width: 900px) {
   .chat-sidebar {
     flex-basis: clamp(140px, 24vw, 200px);
@@ -200,6 +214,9 @@ body {
 }
 
 .sidebar-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding-bottom: 8px;
   border-bottom: 1px solid #3f4147;
 }
@@ -214,6 +231,27 @@ body {
   font-size: 0.85rem;
   cursor: pointer;
   text-align: left;
+}
+
+/* 햄버거 메뉴 토글 버튼 (새 채팅 옆) */
+.sidebar-menu-toggle {
+  flex: 0 0 auto;
+  width: 40px;              /* 새 채팅 높이와 비슷하게 */
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid #4a4b51;
+  background: #202123;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.sidebar-menu-toggle img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
 }
 
 .sidebar-new-chat-btn:hover {
