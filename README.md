@@ -9,3 +9,5 @@
 10.28 // nutrient_agent main.py 결합. <- 아직 안정도 0% <- 의도 질문 확인 x
 
 11.03 // nutrient_ agent main.py 재 결합 <- 안정도 5%? 정도. 각 질문 분배 확인, 병렬 처리 확인. 안정도 x>
+
+11.5 // VITE install 설치 완료 <- front_end 초안 figma작성.>
