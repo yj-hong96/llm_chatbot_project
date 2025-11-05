@@ -1,42 +1,178 @@
+/* --- 글로벌 스타일: 수직/수평 중앙 정렬 --- */
+
+/* Vite의 기본 index.css 스타일을 덮어쓰기(reset)합니다. */
+body {
+  margin: 0;
+  display: block; 
+  
+  /* [수정] 기본 배경색 (밝은 핑크) */
+  background-color: #ffebee; 
+  /* [수정] 트랜지션 속도 증가 */
+  transition: background-color 0.15s ease-in-out;
+}
+
+/* #root를 flex 컨테이너로 만들어 
+  자식(.my-homepage-container)을 중앙 정렬합니다.
+*/
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+  /* index.css의 기본값 덮어쓰기 */
+  max-width: none;
+  margin: 0;
+  text-align: left; /* flex에서 필요 없지만, 덮어쓰기용 */
+
+  /* flex 중앙 정렬 */
+  display: flex;
+  justify-content: center; /* 수평 중앙 */
+  align-items: center;   /* 수직 중앙 */
+  min-height: 100vh;     /* 최소 높이를 화면 전체 높이로 */
+  padding: 1rem;         /* 화면 가장자리에 여백 */
+  box-sizing: border-box;
+}
+
+
+/* --- 모바일 우선 반응형 스타일 --- 
+  기본 스타일을 (가장 작은 화면) 기준으로 작성합니다.
+*/
+
+/* --- 1. 기본 스타일 (Small / Mobile) --- */
+/* (768px 미만일 때 적용) */
+
+.my-homepage-container {
+  width: 100%; /* 너비는 100%로 유지 */
+  margin: 0;
+  /* [수정] 패딩 20% 증가 */
+  padding: 24px; /* 텍스트 주변 여백만 남김 */
+  
+  /* [수정] 트랜지션 속도 증가 */
+  transition: all 0.15s ease-in-out; 
+  box-sizing: border-box; 
+}
+
+h1 {
+  /* [수정] 
+    최대값을 4.5rem으로 늘려 고해상도에서도 글자가 커지도록 수정
+    최소 1.5rem, 화면너비(1rem + 2.5vw)에 따라 반응, 최대 4.5rem
+  */
+  font-size: clamp(1.5rem, 1rem + 2.5vw, 4.5rem);
+  /* [수정] 선명한 빨간색 */
+  color: #d50000; 
   text-align: center;
+  /* [수정] 트랜지션 속도 증가 */
+  transition: all 0.15s ease-in-out;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+p {
+  /* [수정] 
+    최대값을 1.5rem으로 늘려 고해상도에서도 글자가 커지도록 수정
+    최소 0.9rem, 화면너비(0.8rem + 0.5vw)에 따라 반응, 최대 1.5rem
+  */
+  font-size: clamp(0.9rem, 0.8rem + 0.5vw, 1.5rem);
+  text-align: center;
+  line-height: 1.6;
+  color: #333;
+  /* [수정] 트랜지션 속도 증가 */
+  transition: all 0.15s ease-in-out;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+
+/* --- 2. 중간 화면 (Medium / Tablet) --- */
+/* 화면(브라우저 창)의 너비가 768px 이상일 때 적용 */
+@media (min-width: 768px) {
+  
+  .my-homepage-container {
+    /* (내용 없음) */
   }
-  to {
-    transform: rotate(360deg);
+  
+  /* [수정] body의 배경색을 변경 (밝은 민트) */
+  body {
+    background-color: #e0f2f1; 
+  }
+
+  h1 {
+    /* [제거] font-size (clamp()가 처리) */
+    /* [수정] 선명한 청록색 */
+    color: #004d40; 
+  }
+
+  p {
+    /* [제거] font-size (clamp()가 처리) */
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+
+/* --- 3. 큰 화면 (Large / Desktop) --- */
+/* 화면(브라우저 창)의 너비가 1024px 이상 ~ 1439px 까지 적용 */
+@media (min-width: 1024px) {
+  
+  .my-homepage-container {
+    /* [수정] 패딩 20% 증가 */
+    padding: 36px; /* 여백 증가 */
+  }
+
+  /* [수정] body의 배경색을 변경 (밝은 라임) */
+  body {
+    background-color: #f0f4c3; 
+  }
+
+  h1 {
+    /* [제거] font-size (clamp()가 처리) */
+    /* [수정] 선명한 녹색 */
+    color: #558b2f; 
+  }
+
+  p {
+    /* [제거] font-size (clamp()가 처리) */
   }
 }
 
-.card {
-  padding: 2em;
+
+/* --- 4. 아주 큰 화면 (X-Large / Wide Monitor) --- */
+/* 화면(브라우저 창)의 너비가 1440px 이상 ~ 1919px 까지 적용 */
+@media (min-width: 1440px) {
+  
+  .my-homepage-container {
+    /* [수정] 패딩 20% 증가 */
+    padding: 48px; /* 여백 증가 */
+  }
+
+  /* [수정] body의 배경색을 변경 (밝은 오렌지/크림) */
+  body {
+    background-color: #fff8e1; 
+  }
+
+  h1 {
+    /* [제거] font-size (clamp()가 처리) */
+    /* [수정] 선명한 앰버/오렌지 */
+    color: #ff6f00; 
+  }
+
+  p {
+    /* [제거] font-size (clamp()가 처리) */
+  }
 }
 
-.read-the-docs {
-  color: #888;
+
+/* --- 5. 초고해상도 화면 (XX-Large / Ultra Wide) --- */
+/* [추가] 화면(브라우저 창)의 너비가 1920px 이상일 때 적용 (2560px 포함) */
+@media (min-width: 1920px) {
+  
+  .my-homepage-container {
+    /* [수정] 패딩 20% 증가 */
+    padding: 60px; /* 여백 더 증가 */
+  }
+
+  /* [수정] body의 배경색을 변경 (밝은 보라) */
+  body {
+    background-color: #f3e5f5; 
+  }
+
+  h1 {
+    /* [제거] font-size (clamp()가 처리) */
+    /* [수정] 선명한 보라색 */
+    color: #4a148c; 
+  }
+
+  p {
+    /* [제거] font-size (clamp()가 처리) */
+  }
 }
