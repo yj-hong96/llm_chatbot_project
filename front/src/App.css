@@ -19,8 +19,8 @@ body {
     'Apple SD Gothic Neo', sans-serif;
   background-color: #ffffff;
   color: #111111;
-  overflow-x: hidden;
-  overflow-y: hidden; /*auto 자동*/
+  overflow-x: hidden;  /* 가로 스크롤만 막기 */
+  overflow-y: auto;    /* 또는 이 줄을 아예 삭제해도 됨 (기본값: auto) */
 }
 
 /* 모든 페이지 공통 래퍼 */
@@ -389,6 +389,28 @@ body {
   box-shadow: 0 0 0 1px #6366f1;
 }
 
+.sidebar-chat-list.sidebar-chat-list-limit {
+  max-height: 22rem;      /* 대략 10개 정도 높이로 제한 */
+  overflow-y: auto;
+}
+
+/* ===== 폴더 섹션 ===== */
+.sidebar-folder-title {
+  margin-top: 8px;
+}
+
+.sidebar-folder-list {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid #3f4147;
+}
+
+.sidebar-folder-empty {
+  font-size: 0.78rem;
+  color: #71717a;
+  padding: 4px 2px;
+}
+
 /* =========================================================
    [채팅 페이지] 우측 챗봇 영역 (Gemini 스타일, 반응형)
    ========================================================= */
@@ -697,4 +719,88 @@ body {
 
 .error-modal-primary:hover {
   background: #a01f18;
+}
+
+
+/* ===== 사이드바 폴더 UI ===== */
+
+.sidebar-folder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.sidebar-folder-item {
+  padding: 4px 6px;
+  border-radius: 0.5rem;
+  background: #26272f;
+  border: 1px solid #353641;
+  cursor: default;
+}
+
+.sidebar-folder-item.drag-over {
+  border-color: #6366f1;
+  background: #2f3140;
+}
+
+.sidebar-folder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sidebar-folder-name {
+  font-size: 0.8rem;
+  color: #e5e5f0;
+}
+
+.sidebar-folder-count {
+  font-size: 0.7rem;
+  color: #a1a1aa;
+}
+
+.sidebar-folder-chats {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-folder-chat {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: #d4d4dd;
+  font-size: 0.78rem;
+  padding: 2px 4px;
+  border-radius: 0.4rem;
+  cursor: pointer;
+}
+
+.sidebar-folder-chat:hover {
+  background: #3a3b47;
+}
+
+.sidebar-folder-chat.active {
+  background: #4a4b59;
+}
+
+.sidebar-new-folder-btn {
+  margin-top: 4px;
+  width: 100%;
+  border-radius: 999px;
+  border: 1px dashed #4a4b51;
+  background: transparent;
+  color: #a1a1aa;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-align: center;
+}
+
+.sidebar-new-folder-btn:hover {
+  border-style: solid;
+  color: #f9fafb;
 }
