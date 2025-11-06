@@ -19,6 +19,8 @@
  ㅂ. ERROR창 새로운 창으로 나오게 업데이트 완료.
  ------------------------------------------------------------------------
  
+1.milvus on -> ptyhon run_test_server.py -> cd front -> Set-ExecutionPolicy Bypass -Scope Process -> npm run dev
+
 해결 방법 1: 현재 터미널에서만 임시로 허용 (가장 안전)
 현재 사용 중인 PowerShell 터미널 창에만 일회성으로 스크립트 실행을 허용하는 방법입니다. 터미널을 껐다 켜면 원래대로 돌아갑니다.
 

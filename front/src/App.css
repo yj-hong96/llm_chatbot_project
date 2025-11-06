@@ -19,7 +19,8 @@ body {
     'Apple SD Gothic Neo', sans-serif;
   background-color: #ffffff;
   color: #111111;
-  overflow-y: auto;
+  overflow-x: hidden;
+  overflow-y: hidden; /*auto 자동*/
 }
 
 /* 모든 페이지 공통 래퍼 */
@@ -74,36 +75,27 @@ body {
   flex-direction: column;
 }
 
-/* 홈 화면 본문
-   - 세로 : 헤더 아래에서 중앙 쪽
-   - 가로 : 항상 중앙 정렬
-   - 좌측 패딩을 약간 더 줘서, 전체 화면 기준으로는
-     살짝 오른쪽에 떠 있는 느낌이 나도록 조정
-*/
+/* 홈 화면 본문 */
 .home-main {
   flex: 1;
   width: 100%;
 
   display: flex;
   flex-direction: column;
-  justify-content: center;     /* 세로 방향 가운데 */
-  align-items: center;         /* 가로 가운데 */
+  justify-content: center; /* 세로 가운데 */
+  align-items: center;     /* 가로 가운데 */
 
-  /* 화면이 넓어질수록 왼쪽이 조금 더 많이 비도록 */
   padding-top: 4vh;
   padding-bottom: 6vh;
-  padding-left: 12vw;          /* ← 왼쪽 여백을 좀 더 크게 */
-  padding-right: 6vw;          /* → 오른쪽 여백은 조금만 */
+  padding-left: 12vw;
+  padding-right: 6vw;
   gap: 3vh;
 }
 
-/* 이미지 박스
-   - 상한(900px) 제거 → 화면이 커지면 같이 커짐
-   - 뷰포트 기준 60% 폭 사용 (필요하면 숫자만 바꾸면 됨)
-*/
+/* 이미지 박스 */
 .hero-image {
-  width: 60vw;          /* 해상도 커지면 같이 커짐 */
-  margin: 0 auto;       /* home-main 안에서 항상 가운데 */
+  width: 60vw;
+  margin: 0 auto;
   aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: 0.6rem;
@@ -117,22 +109,19 @@ body {
   display: block;
 }
 
-/* 채팅 시작 버튼
-   - 이미지 아래에서 항상 가운데
-   - clamp 상한을 제거하고, 뷰포트 비율로만 크기 조절
-*/
+/* 채팅 시작 버튼 */
 .start-chat-btn {
   margin-top: 2.5vh;
-  margin-inline: auto;     /* 가로 중앙 */
+  margin-inline: auto;
 
-  width: 30vw;             /* 화면의 30% 폭 사용 */
-  min-width: 220px;        /* 너무 작아지지 않게 바닥만 잡음 */
+  width: 30vw;
+  min-width: 220px;
 
   padding: 1rem 1.4rem;
   border-radius: 0.6rem;
   border: none;
   background-color: #e0e0e0;
-  font-size: 1rem;         /* 해상도 제한 없이 고정, 필요하면 변경 */
+  font-size: 1rem;
 
   cursor: pointer;
   transition: transform 0.1s ease-out,
@@ -146,8 +135,7 @@ body {
   transform: translateY(-1px);
 }
 
-/* 화면이 아주 좁을 때(모바일), 왼쪽 패딩을 줄여서
-   다시 정확한 중앙 쪽으로 오도록 보정 */
+/* 모바일에서 홈 중앙 보정 */
 @media (max-width: 768px) {
   .home-main {
     padding-left: 6vw;
@@ -155,20 +143,24 @@ body {
   }
 
   .hero-image {
-    width: 90vw;      /* 작은 화면에서는 거의 꽉 차게 */
+    width: 90vw;
   }
 
   .start-chat-btn {
     width: 70vw;
   }
 }
+
 /* =========================================================
    [채팅 페이지] 전체 레이아웃 + 사이드바
    ========================================================= */
 
+/* 🔹 채팅 페이지에서만 브라우저 스크롤 숨기기 */
 .chat-page {
   flex: 1;
   display: flex;
+  height: 100vh;      /* 화면 높이에 딱 맞게 */
+  overflow: hidden;   /* 가로/세로 스크롤바 숨김 */
 }
 
 /* 채팅 레이아웃 (사이드바 + 우측 채팅창) */
@@ -176,14 +168,26 @@ body {
   flex: 1;
   display: flex;
   width: 100%;
-  min-height: 100vh;
+  height: 100%;       /* chat-page 높이 안에서만 움직이게 */
 }
 
 /* ===== 좌측 사이드바 ===== */
 
-/* 좌측 사이드바 */
 .chat-sidebar {
-  flex: 0 0 clamp(170px, 18vw, 260px); /* 창이 줄어들면 같이 줄어듦 */
+  flex: 0 0 clamp(170px, 18vw, 260px);
+  background: #202123;
+  color: #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* ===== 좌측 사이드바 ===== */
+
+.chat-sidebar {
+  flex: 0 0 clamp(170px, 18vw, 260px);
   background: #202123;
   color: #f0f0f0;
   display: flex;
@@ -195,8 +199,8 @@ body {
 
 /* 사이드바가 접힌 상태 */
 .chat-sidebar.collapsed {
-  flex: 0 0 64px;      /* 좁은 세로 바로 축소 */
-  align-items: center; /* 안의 내용 중앙 정렬 */
+  flex: 0 0 64px;
+  align-items: center;
 }
 
 /* 접힌 상태에서는 상단만 살짝 보이게 */
@@ -204,8 +208,6 @@ body {
   justify-content: center;
   border-bottom: none;
 }
-
-
 
 @media (max-width: 900px) {
   .chat-sidebar {
@@ -236,7 +238,7 @@ body {
 /* 햄버거 메뉴 토글 버튼 (새 채팅 옆) */
 .sidebar-menu-toggle {
   flex: 0 0 auto;
-  width: 40px;              /* 새 채팅 높이와 비슷하게 */
+  width: 40px;
   height: 32px;
   border-radius: 999px;
   border: 1px solid #4a4b51;
@@ -339,7 +341,7 @@ body {
   color: #ffffff;
 }
 
-/* ... 메뉴 */
+/* ... 메뉴 (세로로 정렬) */
 .sidebar-chat-menu {
   position: absolute;
   right: 6px;
@@ -351,17 +353,16 @@ body {
   padding: 4px;
   z-index: 100;
 
-    display: flex;          /* 🔹 flex 사용 */
-  flex-direction: column; /* 🔹 세로로 쌓기 */
+  display: flex;
+  flex-direction: column;
   align-items: stretch;
 }
 
-
 .sidebar-chat-menu button {
-  display: block;         /* 🔹 한 줄 전체 차지 */
+  display: block;
   width: 100%;
   text-align: left;
-  
+
   border: none;
   background: transparent;
   color: #fef2f2;
@@ -389,33 +390,47 @@ body {
 }
 
 /* =========================================================
-   [채팅 페이지] 우측 챗봇 영역
+   [채팅 페이지] 우측 챗봇 영역 (Gemini 스타일, 반응형)
    ========================================================= */
 
 .chat-shell {
-  margin-left: 5vw;
-  margin-right: 80px;
-  margin-top: 10vh;
-  margin-bottom: 10vh;
-  width: calc(100vw - 5vw - 80px - 260px); /* 사이드바 폭 제외 */
-  height: calc(100vh - 20vh);
+  flex: 1;
   min-width: 0;
+  box-sizing: border-box;
+
+  /* 바깥 여백 대신 padding을 사용해서
+     사이드바 폭과 상관 없이 좌우 스크롤이 생기지 않게 함 */
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
+  padding: 6vh 6vw 5vh;
+}
+
+@media (max-width: 900px) {
+  .chat-shell {
+    padding: 4vh 3vw 3vh;
+  }
 }
 
 .chat-main {
   flex: 1;
   width: 100%;
   display: flex;
-  justify-content: center;
+  justify-content: center;  /* 가로 중앙 */
   align-items: stretch;
 }
 
+/* 가운데 큰 채팅 박스 */
 .chat-container {
-  width: 100%;
-  height: 100%;
+  /* 🔹 세로는 그대로 */
+  flex: 1;
+  min-height: 0;
+
+  /* 🔹 가로폭: 작은 화면에서도 잘리지 않게 */
+  width: clamp(350px, 70vw, 1600px);  
+  max-width: 100%;                     /* 혹시 몰라서 한 번 더 안전장치 */
+
+  align-self: center;
+
   display: flex;
   flex-direction: column;
   border-radius: 0.9rem;
@@ -426,9 +441,16 @@ body {
   gap: 0.8rem;
 }
 
+@media (max-width: 900px) {
+  .chat-container {
+    max-width: none; /* 작은 화면에서는 전체 사용 */
+  }
+}
+
 /* 채팅 메시지 영역 (내부 스크롤) */
 .chat-messages {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
@@ -530,7 +552,7 @@ body {
   }
 }
 
-/* 입력 영역 */
+/* 입력 영역 – 항상 카드 맨 아래 쪽에 붙어 있게 */
 .chat-input-area {
   display: flex;
   gap: 0.5rem;
@@ -540,6 +562,7 @@ body {
 
 .chat-input {
   flex: 1;
+  min-width: 0;
   padding: 0.7rem 0.9rem;
   border-radius: 0.7rem;
   border: 1px solid #d0d0d0;
@@ -582,7 +605,7 @@ body {
 }
 
 /* =========================================================
-   [공통] 가운데 에러 모달
+   [공통] 가운데 에러/확인 모달
    ========================================================= */
 
 .error-modal-overlay {

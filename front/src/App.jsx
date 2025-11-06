@@ -743,21 +743,8 @@ function ChatPage() {
         </aside>
 
         {/* ===== 우측: 실제 챗봇 화면 ===== */}
-        <div
-          className="chat-shell"
-          style={
-            sidebarOpen
-              ? undefined
-              : {
-                  // 사이드바 없을 때는 전체 폭 더 넓게 사용
-                  marginLeft: "5vw",
-                  marginRight: "80px",
-                  marginTop: "10vh",
-                  marginBottom: "10vh",
-                  width: "calc(100vw - 5vw - 80px)",
-                }
-          }
-        >
+            <div className="chat-shell">
+
           <header className="app-header chat-header">
             <div className="logo-box" onClick={() => navigate("/")}>
               <h1 className="logo-text small">챗봇</h1>

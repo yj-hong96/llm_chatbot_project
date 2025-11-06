@@ -1,0 +1,708 @@
+/* =========================================================
+   [공통] 리셋 + 기본 설정
+   ========================================================= */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, 'Noto Sans KR',
+    'Apple SD Gothic Neo', sans-serif;
+  background-color: #ffffff;
+  color: #111111;
+  overflow-y: auto;
+}
+
+/* 모든 페이지 공통 래퍼 */
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 공통 헤더(로고) */
+.app-header {
+  width: 100%;
+  display: flex;
+  justify-content: center; /* 로고를 가운데 */
+}
+
+/* 로고를 감싸는 박스 */
+.logo-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4vh;
+  margin-bottom: 3vh;
+  padding: 0.4rem 1.2rem;
+  border-radius: 0.8rem;
+  background-color: transparent;
+  cursor: pointer;
+}
+
+.logo-box:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.logo-text {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-size: clamp(2.4rem, 5vw, 4rem);
+}
+
+.logo-text.small {
+  font-size: clamp(1.8rem, 3.4vw, 2.6rem);
+}
+
+/* =========================================================
+   [홈 페이지] 메인 화면 (챗봇 제목 + 이미지 + 버튼)
+   ========================================================= */
+
+/* 홈 페이지 전체 */
+.home-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 홈 화면 본문
+   - 세로 : 헤더 아래에서 중앙 쪽
+   - 가로 : 항상 중앙 정렬
+   - 좌측 패딩을 약간 더 줘서, 전체 화면 기준으로는
+     살짝 오른쪽에 떠 있는 느낌이 나도록 조정
+*/
+.home-main {
+  flex: 1;
+  width: 100%;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;     /* 세로 방향 가운데 */
+  align-items: center;         /* 가로 가운데 */
+
+  /* 화면이 넓어질수록 왼쪽이 조금 더 많이 비도록 */
+  padding-top: 4vh;
+  padding-bottom: 6vh;
+  padding-left: 12vw;          /* ← 왼쪽 여백을 좀 더 크게 */
+  padding-right: 6vw;          /* → 오른쪽 여백은 조금만 */
+  gap: 3vh;
+}
+
+/* 이미지 박스
+   - 상한(900px) 제거 → 화면이 커지면 같이 커짐
+   - 뷰포트 기준 60% 폭 사용 (필요하면 숫자만 바꾸면 됨)
+*/
+.hero-image {
+  width: 60vw;          /* 해상도 커지면 같이 커짐 */
+  margin: 0 auto;       /* home-main 안에서 항상 가운데 */
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 0.6rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+
+.hero-bg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 채팅 시작 버튼
+   - 이미지 아래에서 항상 가운데
+   - clamp 상한을 제거하고, 뷰포트 비율로만 크기 조절
+*/
+.start-chat-btn {
+  margin-top: 2.5vh;
+  margin-inline: auto;     /* 가로 중앙 */
+
+  width: 30vw;             /* 화면의 30% 폭 사용 */
+  min-width: 220px;        /* 너무 작아지지 않게 바닥만 잡음 */
+
+  padding: 1rem 1.4rem;
+  border-radius: 0.6rem;
+  border: none;
+  background-color: #e0e0e0;
+  font-size: 1rem;         /* 해상도 제한 없이 고정, 필요하면 변경 */
+
+  cursor: pointer;
+  transition: transform 0.1s ease-out,
+    box-shadow 0.1s ease-out,
+    background-color 0.15s ease-out;
+}
+
+.start-chat-btn:hover {
+  background-color: #d4d4d4;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+  transform: translateY(-1px);
+}
+
+/* 화면이 아주 좁을 때(모바일), 왼쪽 패딩을 줄여서
+   다시 정확한 중앙 쪽으로 오도록 보정 */
+@media (max-width: 768px) {
+  .home-main {
+    padding-left: 6vw;
+    padding-right: 6vw;
+  }
+
+  .hero-image {
+    width: 90vw;      /* 작은 화면에서는 거의 꽉 차게 */
+  }
+
+  .start-chat-btn {
+    width: 70vw;
+  }
+}
+/* =========================================================
+   [채팅 페이지] 전체 레이아웃 + 사이드바
+   ========================================================= */
+
+.chat-page {
+  flex: 1;
+  display: flex;
+}
+
+/* 채팅 레이아웃 (사이드바 + 우측 채팅창) */
+.chat-layout {
+  flex: 1;
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  overflow: hidden;
+  
+}
+
+/* ===== 좌측 사이드바 ===== */
+
+/* 좌측 사이드바 */
+.chat-sidebar {
+  flex: 0 0 clamp(170px, 18vw, 260px); /* 창이 줄어들면 같이 줄어듦 */
+  background: #202123;
+  color: #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* 사이드바가 접힌 상태 */
+.chat-sidebar.collapsed {
+  flex: 0 0 64px;      /* 좁은 세로 바로 축소 */
+  align-items: center; /* 안의 내용 중앙 정렬 */
+}
+
+/* 접힌 상태에서는 상단만 살짝 보이게 */
+.chat-sidebar.collapsed .sidebar-top {
+  justify-content: center;
+  border-bottom: none;
+}
+
+
+
+@media (max-width: 900px) {
+  .chat-sidebar {
+    flex-basis: clamp(140px, 24vw, 200px);
+  }
+}
+
+.sidebar-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #3f4147;
+}
+
+.sidebar-new-chat-btn {
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid #4a4b51;
+  background: #343541;
+  color: #f7f7f7;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+/* 햄버거 메뉴 토글 버튼 (새 채팅 옆) */
+.sidebar-menu-toggle {
+  flex: 0 0 auto;
+  width: 40px;              /* 새 채팅 높이와 비슷하게 */
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid #4a4b51;
+  background: #202123;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.sidebar-menu-toggle img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.sidebar-new-chat-btn:hover {
+  background: #40414f;
+}
+
+.sidebar-section-title {
+  font-size: 0.75rem;
+  color: #a1a1aa;
+  padding: 4px 2px 2px;
+}
+
+.sidebar-chat-list {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.sidebar-chat-list::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar-chat-list::-webkit-scrollbar-thumb {
+  background-color: #3f4147;
+  border-radius: 999px;
+}
+
+/* 대화 아이템 */
+.sidebar-chat-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+  padding: 2px 4px;
+  border-radius: 0.65rem;
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out,
+    background 0.12s ease-out, opacity 0.12s ease-out;
+}
+
+.sidebar-chat-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  color: #e4e4e7;
+  text-align: left;
+  font-size: 0.82rem;
+  padding: 0.5rem 0.55rem;
+  border-radius: 0.55rem;
+  cursor: pointer;
+}
+
+.sidebar-chat-item.active .sidebar-chat-main {
+  background: #343541;
+}
+
+.sidebar-chat-item:not(.active) .sidebar-chat-main:hover {
+  background: #2a2b32;
+}
+
+.sidebar-chat-index {
+  font-size: 0.7rem;
+  color: #a1a1aa;
+}
+
+.sidebar-chat-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ... 버튼 */
+.sidebar-chat-more {
+  border: none;
+  background: transparent;
+  color: #a1a1aa;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 1.1rem;
+}
+
+.sidebar-chat-more:hover {
+  color: #ffffff;
+}
+
+/* ... 메뉴 */
+.sidebar-chat-menu {
+  position: absolute;
+  right: 6px;
+  top: 100%;
+  margin-top: 3px;
+  background: #343541;
+  border: 1px solid #4a4b51;
+  border-radius: 0.45rem;
+  padding: 4px;
+  z-index: 100;
+
+    display: flex;          /* 🔹 flex 사용 */
+  flex-direction: column; /* 🔹 세로로 쌓기 */
+  align-items: stretch;
+}
+
+
+.sidebar-chat-menu button {
+  display: block;         /* 🔹 한 줄 전체 차지 */
+  width: 100%;
+  text-align: left;
+  
+  border: none;
+  background: transparent;
+  color: #fef2f2;
+  font-size: 0.78rem;
+  padding: 4px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sidebar-chat-menu button:hover {
+  background: #b3261e;
+  border-radius: 0.35rem;
+}
+
+/* 드래그 상태 */
+.sidebar-chat-item.dragging {
+  opacity: 0.7;
+  transform: scale(0.98);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.45);
+}
+
+.sidebar-chat-item.drag-over {
+  background: #272831;
+  box-shadow: 0 0 0 1px #6366f1;
+}
+
+/* =========================================================
+   [채팅 페이지] 우측 챗봇 영역
+   ========================================================= */
+
+.chat-shell {
+  /* 사이드바를 제외한 나머지 영역을 전부 사용 */
+  flex: 1;
+  min-width: 0;
+
+  /* 화면 크기에 따라 여백만 살짝 두기 */
+  margin: 8vh 5vw;
+  height: auto;
+  min-height: calc(100vh - 16vh);
+
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+
+  /* JSX 에서 style 로 준 width: calc(100vw-...) 를 무시해서
+     사이드바 폭과 상관없이 항상 남는 영역에만 맞게 */
+  width: auto !important;
+}
+
+/* 화면이 좁아지면 여백 줄이기 */
+@media (max-width: 900px) {
+  .chat-shell {
+    margin: 4vh 3vw;
+    min-height: calc(100vh - 8vh);
+  }
+}
+
+.chat-main {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.chat-container {
+  /* 🔹 세로 방향으로는 chat-shell 안을 꽉 채우고 */
+  flex: 1;
+  min-height: 0;
+
+  /* 🔹 가로 폭을 넓게 + 헤더 기준 가운데 정렬 */
+  width: min(75vw, 960px); /* 화면의 75% 까지, 최대 960px */
+  align-self: center;      /* '챗 봇' 텍스트 기준으로 정확히 가운데 */
+
+  /* 기존 스타일 유지 */
+  display: flex;
+  flex-direction: column;
+  border-radius: 0.9rem;
+  border: 1px solid #e1e1e1;
+  background: #fafafa;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  padding: 1.2rem;
+  gap: 0.8rem;
+}
+
+@media (max-width: 900px) {
+  .chat-container {
+    width: 100%;
+  }
+}
+
+/* 채팅 메시지 영역 (내부 스크롤) */
+.chat-messages {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  overflow-y: auto;
+  padding-right: 0.3rem;
+}
+
+.chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+.chat-messages::-webkit-scrollbar-thumb {
+  background-color: #c7c7c7;
+  border-radius: 999px;
+}
+
+/* 말풍선 */
+.message {
+  max-width: 80%;
+  padding: 0.55rem 0.8rem;
+  border-radius: 0.9rem;
+  font-size: clamp(0.82rem, 1.1vw, 0.9rem);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.message.bot {
+  align-self: flex-start;
+  background-color: #ffffff;
+  border: 1px solid #e2e2e2;
+}
+
+.message.user {
+  align-self: flex-end;
+  background-color: #3a7afe;
+  color: #ffffff;
+}
+
+/* 로딩 말풍선 */
+.loading-message {
+  background: #eef3ff;
+  border: 1px solid #d0ddff;
+  box-shadow: 0 0 0 1px rgba(90, 125, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.loading-main-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.loading-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #1f3aa8;
+}
+
+.loading-subtext {
+  margin-top: 0.2rem;
+  font-size: 0.74rem;
+  color: #70758a;
+  line-height: 1.4;
+}
+
+/* "..." 애니메이션 점들 */
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+}
+
+.typing-dots .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #3a7afe;
+  margin-left: 3px;
+  animation: typingBlink 1.1s infinite ease-in-out;
+}
+
+.typing-dots .dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.typing-dots .dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typingBlink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* 입력 영역 */
+.chat-input-area {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.chat-input {
+  flex: 1;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.7rem;
+  border: 1px solid #d0d0d0;
+  font-size: 0.9rem;
+  outline: none;
+  min-width: 0;
+}
+
+.chat-input:focus {
+  border-color: #3a7afe;
+  box-shadow: 0 0 0 2px rgba(58, 122, 254, 0.2);
+}
+
+.chat-send-btn {
+  width: clamp(2.2rem, 3vw, 2.6rem);
+  height: clamp(2.2rem, 3vw, 2.6rem);
+  border-radius: 50%;
+  border: none;
+  background-color: #3a7afe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  transition: background-color 0.15s ease-out, transform 0.1s ease-out,
+    box-shadow 0.1s ease-out;
+}
+
+.chat-send-btn:hover {
+  background-color: #2f64d5;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+  transform: translateY(-1px);
+}
+
+.send-icon {
+  width: 60%;
+  height: 60%;
+  object-fit: contain;
+  display: block;
+}
+
+/* =========================================================
+   [공통] 가운데 에러 모달
+   ========================================================= */
+
+.error-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.error-modal {
+  width: min(480px, 90vw);
+  background: #ffffff;
+  border-radius: 1rem;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.25);
+  border: 1px solid #ffd5d5;
+  padding: 1.1rem 1.3rem 1rem;
+}
+
+.error-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.45rem;
+}
+
+.error-modal-title {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: #b3261e;
+}
+
+.error-modal-close {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #999;
+}
+
+.error-modal-close:hover {
+  color: #333;
+}
+
+.error-modal-body {
+  font-size: 0.8rem;
+  color: #444;
+  margin-bottom: 0.7rem;
+}
+
+.error-modal-guide {
+  margin-bottom: 0.25rem;
+}
+
+.error-modal-hint {
+  color: #666;
+}
+
+.error-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.error-modal-secondary,
+.error-modal-primary {
+  border-radius: 999px;
+  font-size: 0.78rem;
+  padding: 0.3rem 0.9rem;
+  border: none;
+  cursor: pointer;
+}
+
+.error-modal-secondary {
+  background: #f3f3f3;
+  color: #444;
+}
+
+.error-modal-secondary:hover {
+  background: #e3e3e3;
+}
+
+.error-modal-primary {
+  background: #b3261e;
+  color: #ffffff;
+}
+
+.error-modal-primary:hover {
+  background: #a01f18;
+}
