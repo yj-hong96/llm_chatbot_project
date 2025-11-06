@@ -732,12 +732,15 @@ body {
 }
 
 .sidebar-folder-item {
+  position: relative; 
   padding: 4px 6px;
   border-radius: 0.5rem;
   background: #26272f;
   border: 1px solid #353641;
   cursor: default;
 }
+
+
 
 .sidebar-folder-item.drag-over {
   border-color: #6366f1;
