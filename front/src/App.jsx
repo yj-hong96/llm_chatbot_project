@@ -6,6 +6,11 @@ import "./App.css";
 
 const STORAGE_KEY = "chatConversations_v2";
 
+// 사이드바 폭 설정값 (값 그대로 유지)
+const SIDEBAR_MIN_WIDTH = 180;   // 사이드바 최소 폭(px)
+const SIDEBAR_MAX_WIDTH = 360;   // 사이드바 최대 폭(px)
+const SIDEBAR_INIT_WIDTH = 220;  // 시작 폭(px)
+
 // 새 대화(기본 인사 포함) 하나 생성
 function createNewConversation() {
   const now = Date.now();
@@ -323,6 +328,11 @@ function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false); // 상단 토글(현재 레이아웃에선 사용 X)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false); // 접힘 상태
 
+  // 🔻 사이드바 폭 & 리사이즈 상태
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_INIT_WIDTH);
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+  const sidebarResizeRef = useRef(null);
+
   // 드래그 상태
   const [draggingId, setDraggingId] = useState(null); // 채팅 드래그 중인 ID
   const [dragOverId, setDragOverId] = useState(null); // 채팅 위로 드래그 중
@@ -373,6 +383,45 @@ function ChatPage() {
     window.addEventListener("click", handleWindowClick);
     return () => window.removeEventListener("click", handleWindowClick);
   }, []);
+
+  // 🔻 사이드바 드래그 리사이즈
+  useEffect(() => {
+    if (!isResizingSidebar) return;
+
+    const handleMouseMove = (e) => {
+      const data = sidebarResizeRef.current;
+      if (!data) return;
+      const delta = e.clientX - data.startX;
+      let nextWidth = data.startWidth + delta;
+
+      if (nextWidth < SIDEBAR_MIN_WIDTH) nextWidth = SIDEBAR_MIN_WIDTH;
+      if (nextWidth > SIDEBAR_MAX_WIDTH) nextWidth = SIDEBAR_MAX_WIDTH;
+
+      setSidebarWidth(nextWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingSidebar(false);
+      sidebarResizeRef.current = null;
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizingSidebar]);
+
+  const handleSidebarResizeMouseDown = (e) => {
+    if (sidebarCollapsed) return; // 접힌 상태에서는 리사이즈 X
+    e.preventDefault();
+    sidebarResizeRef.current = {
+      startX: e.clientX,
+      startWidth: sidebarWidth,
+    };
+    setIsResizingSidebar(true);
+  };
 
   // 새 채팅
   const handleNewChat = () => {
@@ -908,6 +957,11 @@ function ChatPage() {
         {/* ===== 좌측: 사이드바 ===== */}
         <aside
           className={"chat-sidebar" + (sidebarCollapsed ? " collapsed" : "")}
+          style={
+            !sidebarCollapsed
+              ? { flex: `0 0 ${sidebarWidth}px` }
+              : undefined
+          }
         >
           <div className="sidebar-top">
             {/* 햄버거 메뉴 아이콘 */}
@@ -1172,6 +1226,14 @@ function ChatPage() {
                 })}
               </div>
             </>
+          )}
+
+          {/* 사이드바 리사이즈 핸들 */}
+          {!sidebarCollapsed && (
+            <div
+              className="sidebar-resize-handle"
+              onMouseDown={handleSidebarResizeMouseDown}
+            />
           )}
         </aside>
 
