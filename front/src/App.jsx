@@ -6,10 +6,10 @@ import "./App.css";
 
 const STORAGE_KEY = "chatConversations_v2";
 
-// 사이드바 폭 설정값 (기존 값 그대로)
-const SIDEBAR_MIN_WIDTH = 180;   // 사이드바 최소 폭(px)
-const SIDEBAR_MAX_WIDTH = 360;   // 사이드바 최대 폭(px)
-const SIDEBAR_INIT_WIDTH = 220;  // 시작 폭(px)
+// 사이드바 폭 설정값
+const SIDEBAR_MIN_WIDTH = 180;
+const SIDEBAR_MAX_WIDTH = 360;
+const SIDEBAR_INIT_WIDTH = 220;
 
 // 새 대화(기본 인사 포함) 하나 생성
 function createNewConversation() {
@@ -20,7 +20,7 @@ function createNewConversation() {
     createdAt: now,
     updatedAt: now,
     messages: [{ role: "bot", text: "안녕하세요! 무엇을 도와드릴까요?" }],
-    folderId: null, // 폴더 없음
+    folderId: null,
   };
 }
 
@@ -45,7 +45,7 @@ function getInitialChatState() {
           };
         }
 
-        // 예전 구조: 그냥 배열만 저장돼 있었던 경우
+        // 예전 구조: 배열만 저장돼 있었던 경우
         if (Array.isArray(parsed) && parsed.length > 0) {
           return {
             conversations: parsed,
@@ -317,19 +317,30 @@ function ChatPage() {
   const [chatState, setChatState] = useState(getInitialChatState);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errorInfo, setErrorInfo] = useState(null); // 에러 모달
-  const [menuOpenId, setMenuOpenId] = useState(null); // ... 메뉴 열린 대화 ID
-  const [confirmDelete, setConfirmDelete] = useState(null); // 대화 삭제 확인 모달
-  const [renameInfo, setRenameInfo] = useState(null); // 대화 이름 변경 모달 {id, value}
-  const [confirmFolderDelete, setConfirmFolderDelete] = useState(null); // 폴더 삭제 모달
-  const [folderCreateModalOpen, setFolderCreateModalOpen] = useState(false); // 새 폴더 생성 모달
-  const [newFolderName, setNewFolderName] = useState(""); // 새 폴더 이름
-  const [folderRenameInfo, setFolderRenameInfo] = useState(null); // 폴더 이름 변경 모달 {id, value}
-  const [pendingFolderConvId, setPendingFolderConvId] = useState(null); // 새 폴더 생성 후 이동할 채팅 ID
-  const [sidebarOpen, setSidebarOpen] = useState(false); // 상단 토글(현재 레이아웃에선 사용 X)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false); // 접힘 상태
+  const [errorInfo, setErrorInfo] = useState(null);
 
-  // 🔻 사이드바 폭 & 리사이즈 상태
+  // 채팅용 더보기 메뉴
+  const [menuOpenId, setMenuOpenId] = useState(null); // 열려있는 대화 ID
+  const [menuPosition, setMenuPosition] = useState(null); // {x, y}
+  const [menuInFolder, setMenuInFolder] = useState(false); // 폴더 안 대화인지 여부
+
+  // 폴더용 더보기 메뉴
+  const [folderMenuOpenId, setFolderMenuOpenId] = useState(null);
+  const [folderMenuPosition, setFolderMenuPosition] = useState(null);
+
+  const [confirmDelete, setConfirmDelete] = useState(null); // {id, title}
+  const [renameInfo, setRenameInfo] = useState(null); // {id, value}
+
+  const [confirmFolderDelete, setConfirmFolderDelete] = useState(null); // {id, name}
+  const [folderCreateModalOpen, setFolderCreateModalOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [folderRenameInfo, setFolderRenameInfo] = useState(null); // {id, value}
+  const [pendingFolderConvId, setPendingFolderConvId] = useState(null); // 새 폴더 생성 후 넣을 대화 ID
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // 사이드바 폭 & 리사이즈 상태
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_INIT_WIDTH);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const sidebarResizeRef = useRef(null);
@@ -338,8 +349,7 @@ function ChatPage() {
   const [draggingId, setDraggingId] = useState(null); // 채팅 드래그 중인 ID
   const [dragOverId, setDragOverId] = useState(null); // 채팅 위로 드래그 중
   const [dragOverFolderId, setDragOverFolderId] = useState(null); // 채팅을 폴더 위로 드래그
-  const [folderMenuOpenId, setFolderMenuOpenId] = useState(null); // 폴더용 ...
-  const [folderDraggingId, setFolderDraggingId] = useState(null); // 폴더 드래그 중인 ID
+  const [folderDraggingId, setFolderDraggingId] = useState(null); // 폴더 드래그 중
   const [folderDragOverId, setFolderDragOverId] = useState(null); // 폴더 순서 변경용 드래그 오버
 
   // chatState 분해
@@ -375,7 +385,7 @@ function ChatPage() {
     }
   }, [messages, loading]);
 
-  // 빈 곳 클릭 시 ... 메뉴 닫기
+  // 빈 곳 클릭 시 더보기 메뉴 닫기
   useEffect(() => {
     const handleWindowClick = () => {
       setMenuOpenId(null);
@@ -385,7 +395,83 @@ function ChatPage() {
     return () => window.removeEventListener("click", handleWindowClick);
   }, []);
 
-  // 🔻 사이드바 드래그 리사이즈
+  // 엔터키로 모달의 기본 동작(변경/삭제/예)을 수행
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key !== "Enter") return;
+
+      if (confirmDelete) {
+        e.preventDefault();
+        handleDeleteConversation(confirmDelete.id);
+        setConfirmDelete(null);
+        return;
+      }
+      if (confirmFolderDelete) {
+        e.preventDefault();
+        handleDeleteFolder(confirmFolderDelete.id);
+        setConfirmFolderDelete(null);
+        return;
+      }
+      if (folderRenameInfo) {
+        e.preventDefault();
+        handleRenameFolderConfirm();
+        return;
+      }
+      if (renameInfo) {
+        e.preventDefault();
+        handleRenameConversation(renameInfo.id, renameInfo.value);
+        setRenameInfo(null);
+        return;
+      }
+    };
+
+    if (
+      confirmDelete ||
+      confirmFolderDelete ||
+      folderRenameInfo ||
+      renameInfo
+    ) {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [
+    confirmDelete,
+    confirmFolderDelete,
+    folderRenameInfo,
+    folderRenameInfo?.value,
+    renameInfo,
+    renameInfo?.value,
+  ]);
+
+  // Delete 키로 현재 선택된 채팅 삭제 모달 열기 (채팅 보관 구역)
+  useEffect(() => {
+    const handleDeleteKey = (e) => {
+      if (e.key !== "Delete") return;
+
+      const active = document.activeElement;
+      if (
+        active &&
+        (active.tagName === "INPUT" ||
+          active.tagName === "TEXTAREA" ||
+          active.isContentEditable)
+      ) {
+        // 입력창에 포커스 있으면 무시
+        return;
+      }
+
+      if (!currentConv) return;
+
+      setConfirmDelete({
+        id: currentConv.id,
+        title: currentConv.title,
+      });
+    };
+
+    window.addEventListener("keydown", handleDeleteKey);
+    return () => window.removeEventListener("keydown", handleDeleteKey);
+  }, [currentConv]);
+
+  // 사이드바 드래그 리사이즈
   useEffect(() => {
     if (!isResizingSidebar) return;
 
@@ -415,7 +501,7 @@ function ChatPage() {
   }, [isResizingSidebar]);
 
   const handleSidebarResizeMouseDown = (e) => {
-    if (sidebarCollapsed) return; // 접힌 상태에서는 리사이즈 X
+    if (sidebarCollapsed) return;
     e.preventDefault();
     sidebarResizeRef.current = {
       startX: e.clientX,
@@ -435,6 +521,7 @@ function ChatPage() {
     setErrorInfo(null);
     setInput("");
     setMenuOpenId(null);
+    setFolderMenuOpenId(null);
   };
 
   // 특정 대화 선택
@@ -446,6 +533,7 @@ function ChatPage() {
     setErrorInfo(null);
     setInput("");
     setMenuOpenId(null);
+    setFolderMenuOpenId(null);
   };
 
   // 대화 삭제
@@ -469,6 +557,7 @@ function ChatPage() {
       };
     });
     setMenuOpenId(null);
+    setFolderMenuOpenId(null);
   };
 
   // 실제 이름 변경 로직 (대화)
@@ -483,29 +572,34 @@ function ChatPage() {
       ),
     }));
     setMenuOpenId(null);
+    setFolderMenuOpenId(null);
   };
 
   // 대화 삭제 모달 열기
   const openDeleteConfirmModal = (id, title) => {
     setConfirmDelete({ id, title });
     setMenuOpenId(null);
+    setFolderMenuOpenId(null);
   };
 
   // 폴더 삭제 모달 열기
   const openFolderDeleteConfirmModal = (id, name) => {
     setConfirmFolderDelete({ id, name });
     setFolderMenuOpenId(null);
+    setMenuOpenId(null);
   };
 
   // 대화 이름 변경 모달 열기
   const openRenameModal = (id, title) => {
     setRenameInfo({ id, value: title || "" });
     setMenuOpenId(null);
+    setFolderMenuOpenId(null);
   };
 
-  // 새 폴더 생성 버튼 클릭 → 모달 열기
-  const handleCreateFolder = () => {
+  // 새 폴더 생성 버튼/드롭 → 모달 열기 (convId가 있으면 그 대화를 새 폴더에 넣기)
+  const handleCreateFolder = (convId = null) => {
     setNewFolderName("");
+    setPendingFolderConvId(convId || null);
     setFolderCreateModalOpen(true);
   };
 
@@ -548,6 +642,7 @@ function ChatPage() {
     const target = folders.find((f) => f.id === folderId);
     setFolderRenameInfo({ id: folderId, value: target?.name || "" });
     setFolderMenuOpenId(null);
+    setMenuOpenId(null);
   };
 
   // 폴더 이름 변경 확정
@@ -580,10 +675,8 @@ function ChatPage() {
   const handleFolderDragOver = (e, folderId) => {
     e.preventDefault();
     if (folderDraggingId) {
-      // 폴더 순서 변경용 드래그
       setFolderDragOverId(folderId);
     } else {
-      // 채팅을 폴더 위로 드래그
       setDragOverFolderId(folderId);
     }
   };
@@ -591,6 +684,7 @@ function ChatPage() {
   // 폴더에 드롭 → (1) 폴더 순서 변경 or (2) 채팅을 폴더로 이동
   const handleFolderDrop = (e, folderId) => {
     e.preventDefault();
+    e.stopPropagation();
 
     if (folderDraggingId) {
       // 폴더 순서 변경
@@ -612,9 +706,12 @@ function ChatPage() {
       return;
     }
 
-    // 채팅을 폴더로 이동
+    // 채팅을 폴더로 이동 (폴더 안→폴더, 채팅→폴더 모두)
     const convId = draggingId || e.dataTransfer.getData("text/plain");
-    if (!convId) {
+    if (
+      !convId ||
+      !(conversations || []).some((c) => c.id === convId)
+    ) {
       setDraggingId(null);
       setDragOverId(null);
       setDragOverFolderId(null);
@@ -633,7 +730,7 @@ function ChatPage() {
     setDragOverFolderId(null);
   };
 
-  // 폴더 안 채팅을 폴더 밖으로 이동 (메뉴용)
+  // 폴더 안 채팅을 폴더 밖(채팅 구역)으로 이동 (더보기 메뉴용)
   const handleMoveConversationToRoot = (id) => {
     setChatState((prev) => ({
       ...prev,
@@ -642,6 +739,7 @@ function ChatPage() {
       ),
     }));
     setMenuOpenId(null);
+    setFolderMenuOpenId(null);
   };
 
   // 드래그 시작 (폴더)
@@ -649,7 +747,7 @@ function ChatPage() {
     setFolderDraggingId(folderId);
     setFolderDragOverId(null);
     setDragOverFolderId(null);
-    setDraggingId(null); // 채팅 드래그 상태 초기화
+    setDraggingId(null);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", folderId);
   };
@@ -665,7 +763,7 @@ function ChatPage() {
     setDraggingId(id);
     setDragOverId(null);
     setDragOverFolderId(null);
-    setFolderDraggingId(null); // 폴더 드래그 상태 초기화
+    setFolderDraggingId(null);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", id);
   };
@@ -677,10 +775,18 @@ function ChatPage() {
     }
   };
 
-  // 루트 채팅 아이템 위로 드롭할 때 (순서 변경 + 폴더 해제 가능)
-  const handleDrop = (e, id) => {
+  // 채팅 아이템 위로 드롭 (채팅 구역용) → 순서 변경 + 폴더 해제
+  const handleDropOnRootItem = (e, targetConvId) => {
     e.preventDefault();
-    if (!draggingId || draggingId === id) {
+    e.stopPropagation();
+
+    const convId = draggingId || e.dataTransfer.getData("text/plain");
+
+    if (
+      !convId ||
+      convId === targetConvId ||
+      !(conversations || []).some((c) => c.id === convId)
+    ) {
       setDraggingId(null);
       setDragOverId(null);
       setDragOverFolderId(null);
@@ -689,26 +795,18 @@ function ChatPage() {
 
     setChatState((prev) => {
       const list = [...(prev.conversations || [])];
-      const fromIndex = list.findIndex((c) => c.id === draggingId);
-      const toIndex = list.findIndex((c) => c.id === id);
+      const fromIndex = list.findIndex((c) => c.id === convId);
+      const toIndex = list.findIndex((c) => c.id === targetConvId);
       if (fromIndex === -1 || toIndex === -1) return prev;
 
-      const moved = list[fromIndex];
-      const target = list[toIndex];
+      const [movedRaw] = list.splice(fromIndex, 1);
+      const moved =
+        movedRaw.folderId !== null ? { ...movedRaw, folderId: null } : movedRaw;
 
-      // 원래 위치에서 제거
-      list.splice(fromIndex, 1);
+      const newToIndex = list.findIndex((c) => c.id === targetConvId);
+      const insertIndex = newToIndex === -1 ? list.length : newToIndex;
 
-      // 제거 후 목표 인덱스 보정
-      const insertIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
-
-      // 타겟이 "채팅" 구역(폴더 없음)이면, 폴더에서 빼기
-      const updatedMoved =
-        target && !target.folderId && moved.folderId
-          ? { ...moved, folderId: null }
-          : moved;
-
-      list.splice(insertIndex, 0, updatedMoved);
+      list.splice(insertIndex, 0, moved);
 
       return { ...prev, conversations: list };
     });
@@ -718,7 +816,47 @@ function ChatPage() {
     setDragOverFolderId(null);
   };
 
-  // 채팅 리스트 전체(빈 공간 포함)를 드롭존으로 처리
+  // 폴더 안 채팅 위로 드롭 → 같은 폴더/다른 폴더로 이동 & 순서 변경
+  const handleDropOnFolderChat = (e, targetConvId, folderId) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const convId = draggingId || e.dataTransfer.getData("text/plain");
+
+    if (
+      !convId ||
+      convId === targetConvId ||
+      !(conversations || []).some((c) => c.id === convId)
+    ) {
+      setDraggingId(null);
+      setDragOverId(null);
+      setDragOverFolderId(null);
+      return;
+    }
+
+    setChatState((prev) => {
+      const list = [...(prev.conversations || [])];
+      const fromIndex = list.findIndex((c) => c.id === convId);
+      const toIndex = list.findIndex((c) => c.id === targetConvId);
+      if (fromIndex === -1 || toIndex === -1) return prev;
+
+      const [movedRaw] = list.splice(fromIndex, 1);
+      const moved = { ...movedRaw, folderId };
+
+      const newToIndex = list.findIndex((c) => c.id === targetConvId);
+      const insertIndex = newToIndex === -1 ? list.length : newToIndex;
+
+      list.splice(insertIndex, 0, moved);
+
+      return { ...prev, conversations: list };
+    });
+
+    setDraggingId(null);
+    setDragOverId(null);
+    setDragOverFolderId(null);
+  };
+
+  // 채팅 리스트 전체(빈 공간 포함)를 드롭존으로 → 맨 아래로 이동 + 폴더 해제
   const handleRootListDragOver = (e) => {
     e.preventDefault();
     setDragOverFolderId(null);
@@ -726,8 +864,9 @@ function ChatPage() {
 
   const handleRootListDrop = (e) => {
     e.preventDefault();
+    e.stopPropagation();
 
-    // 폴더 드래그 중이면 채팅 영역에는 드롭 무시
+    // 폴더를 채팅 구역에 드롭하면 아무 일도 안 하도록
     if (folderDraggingId) {
       setFolderDraggingId(null);
       setFolderDragOverId(null);
@@ -738,7 +877,10 @@ function ChatPage() {
     }
 
     const convId = draggingId || e.dataTransfer.getData("text/plain");
-    if (!convId) {
+    if (
+      !convId ||
+      !(conversations || []).some((c) => c.id === convId)
+    ) {
       setDraggingId(null);
       setDragOverId(null);
       setDragOverFolderId(null);
@@ -750,12 +892,11 @@ function ChatPage() {
       const fromIndex = list.findIndex((c) => c.id === convId);
       if (fromIndex === -1) return prev;
 
-      const moved = list[fromIndex];
-      const updatedMoved = { ...moved, folderId: null };
+      const [movedRaw] = list.splice(fromIndex, 1);
+      const moved =
+        movedRaw.folderId !== null ? { ...movedRaw, folderId: null } : movedRaw;
 
-      list.splice(fromIndex, 1);
-      list.push(updatedMoved);
-
+      list.push(moved);
       return { ...prev, conversations: list };
     });
 
@@ -781,6 +922,7 @@ function ChatPage() {
     setInput("");
     setLoading(true);
     setMenuOpenId(null);
+    setFolderMenuOpenId(null);
 
     setChatState((prev) => {
       const now = Date.now();
@@ -882,7 +1024,7 @@ function ChatPage() {
     }
   };
 
-  const handleKeyDown = (e) => {
+  const handleInputKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -957,9 +1099,17 @@ function ChatPage() {
   // 폴더에 들어가지 않은 루트 채팅 목록
   const rootConversations = conversations.filter((c) => !c.folderId);
 
+  // 전역 더보기용 활성 대화 / 폴더
+  const activeMenuConversation = menuOpenId
+    ? conversations.find((c) => c.id === menuOpenId)
+    : null;
+  const activeMenuFolder = folderMenuOpenId
+    ? folders.find((f) => f.id === folderMenuOpenId)
+    : null;
+
   return (
     <div className="page chat-page">
-      {/* 왼쪽 상단 고정 사이드바 토글 버튼 (현재는 상태만 토글) */}
+      {/* (현재는 기능 없음, 레이아웃 유지용) */}
       <button
         className="sidebar-toggle-btn"
         onClick={(e) => {
@@ -995,7 +1145,7 @@ function ChatPage() {
             )}
           </div>
 
-          {/* 펼쳐져 있을 때만 폴더/채팅 목록 보이기 */}
+          {/* 펼쳐져 있을 때만 폴더/채팅 목록 */}
           {!sidebarCollapsed && (
             <>
               {/* ================== 폴더 섹션 ================== */}
@@ -1012,11 +1162,12 @@ function ChatPage() {
                       e.preventDefault();
                       const convId =
                         draggingId || e.dataTransfer.getData("text/plain");
-                      if (!convId) {
+                      if (
+                        !convId ||
+                        !(conversations || []).some((c) => c.id === convId)
+                      )
                         return;
-                      }
-                      setPendingFolderConvId(convId);
-                      setFolderCreateModalOpen(true);
+                      handleCreateFolder(convId);
                     }}
                   >
                     폴더가 없습니다.
@@ -1064,6 +1215,19 @@ function ChatPage() {
                               className="sidebar-chat-more"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                const rect =
+                                  e.currentTarget.getBoundingClientRect();
+                                const menuWidth = 160;
+                                const viewportWidth =
+                                  window.innerWidth ||
+                                  document.documentElement.clientWidth;
+                                const x = Math.min(
+                                  rect.right,
+                                  viewportWidth - menuWidth - 8
+                                );
+                                const y = rect.bottom + 4;
+                                setFolderMenuPosition({ x, y });
+                                setMenuOpenId(null); // 채팅 더보기 닫기
                                 setFolderMenuOpenId((prev) =>
                                   prev === folder.id ? null : folder.id
                                 );
@@ -1073,26 +1237,6 @@ function ChatPage() {
                             </button>
                           </div>
                         </div>
-
-                        {folderMenuOpenId === folder.id && (
-                          <div className="sidebar-chat-menu">
-                            <button
-                              onClick={() => handleRenameFolder(folder.id)}
-                            >
-                              폴더 이름 변경
-                            </button>
-                            <button
-                              onClick={() =>
-                                openFolderDeleteConfirmModal(
-                                  folder.id,
-                                  folder.name
-                                )
-                              }
-                            >
-                              폴더 삭제
-                            </button>
-                          </div>
-                        )}
 
                         {childConvs.length > 0 && (
                           <div className="sidebar-folder-chats">
@@ -1115,7 +1259,13 @@ function ChatPage() {
                                   onDragOver={(e) =>
                                     handleDragOver(e, conv.id)
                                   }
-                                  onDrop={(e) => handleDrop(e, conv.id)}
+                                  onDrop={(e) =>
+                                    handleDropOnFolderChat(
+                                      e,
+                                      conv.id,
+                                      folder.id
+                                    )
+                                  }
                                   onDragEnd={handleDragEnd}
                                 >
                                   <button
@@ -1134,6 +1284,20 @@ function ChatPage() {
                                     className="sidebar-chat-more"
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      const rect =
+                                        e.currentTarget.getBoundingClientRect();
+                                      const menuWidth = 160;
+                                      const viewportWidth =
+                                        window.innerWidth ||
+                                        document.documentElement.clientWidth;
+                                      const x = Math.min(
+                                        rect.right,
+                                        viewportWidth - menuWidth - 8
+                                      );
+                                      const y = rect.bottom + 4;
+                                      setMenuPosition({ x, y });
+                                      setMenuInFolder(true);
+                                      setFolderMenuOpenId(null); // 폴더 더보기 닫기
                                       setMenuOpenId((prev) =>
                                         prev === conv.id ? null : conv.id
                                       );
@@ -1141,35 +1305,6 @@ function ChatPage() {
                                   >
                                     ⋯
                                   </button>
-
-                                  {menuOpenId === conv.id && (
-                                    <div className="sidebar-chat-menu">
-                                      <button
-                                        onClick={() =>
-                                          openDeleteConfirmModal(
-                                            conv.id,
-                                            conv.title
-                                          )
-                                        }
-                                      >
-                                        대화 삭제
-                                      </button>
-                                      <button
-                                        onClick={() =>
-                                          openRenameModal(conv.id, conv.title)
-                                        }
-                                      >
-                                        이름 변경하기
-                                      </button>
-                                      <button
-                                        onClick={() =>
-                                          handleMoveConversationToRoot(conv.id)
-                                        }
-                                      >
-                                        폴더에서 빼기
-                                      </button>
-                                    </div>
-                                  )}
                                 </div>
                               );
                             })}
@@ -1182,21 +1317,34 @@ function ChatPage() {
 
                 <button
                   className="sidebar-new-folder-btn"
-                  onClick={handleCreateFolder}
+                  onClick={() => handleCreateFolder(null)}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const convId =
+                      draggingId || e.dataTransfer.getData("text/plain");
+                    if (
+                      !convId ||
+                      !(conversations || []).some((c) => c.id === convId)
+                    )
+                      return;
+                    handleCreateFolder(convId);
+                  }}
                 >
                   + 새 폴더
                 </button>
               </div>
 
               {/* ================== 채팅 섹션 ================== */}
-              <div className="sidebar-chat-section">
-                <div
-                  className="sidebar-section-title"
-                  onDragOver={handleRootListDragOver}
-                  onDrop={handleRootListDrop}
-                >
-                  채팅
-                </div>
+              <div
+                className="sidebar-chat-section"
+                onDragOver={handleRootListDragOver}
+                onDrop={handleRootListDrop}
+              >
+                <div className="sidebar-section-title">채팅</div>
 
                 <div
                   className={
@@ -1225,7 +1373,7 @@ function ChatPage() {
                         draggable
                         onDragStart={(e) => handleDragStart(e, conv.id)}
                         onDragOver={(e) => handleDragOver(e, conv.id)}
-                        onDrop={(e) => handleDrop(e, conv.id)}
+                        onDrop={(e) => handleDropOnRootItem(e, conv.id)}
                         onDragEnd={handleDragEnd}
                       >
                         <button
@@ -1244,6 +1392,20 @@ function ChatPage() {
                           className="sidebar-chat-more"
                           onClick={(e) => {
                             e.stopPropagation();
+                            const rect =
+                              e.currentTarget.getBoundingClientRect();
+                            const menuWidth = 160;
+                            const viewportWidth =
+                              window.innerWidth ||
+                              document.documentElement.clientWidth;
+                            const x = Math.min(
+                              rect.right,
+                              viewportWidth - menuWidth - 8
+                            );
+                            const y = rect.bottom + 4;
+                            setMenuPosition({ x, y });
+                            setMenuInFolder(false);
+                            setFolderMenuOpenId(null); // 폴더 더보기 닫기
                             setMenuOpenId((prev) =>
                               prev === conv.id ? null : conv.id
                             );
@@ -1251,25 +1413,6 @@ function ChatPage() {
                         >
                           ⋯
                         </button>
-
-                        {menuOpenId === conv.id && (
-                          <div className="sidebar-chat-menu">
-                            <button
-                              onClick={() =>
-                                openDeleteConfirmModal(conv.id, conv.title)
-                              }
-                            >
-                              대화 삭제
-                            </button>
-                            <button
-                              onClick={() =>
-                                openRenameModal(conv.id, conv.title)
-                              }
-                            >
-                              이름 변경하기
-                            </button>
-                          </div>
-                        )}
                       </div>
                     );
                   })}
@@ -1342,7 +1485,7 @@ function ChatPage() {
                   }
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
+                  onKeyDown={handleInputKeyDown}
                   disabled={loading}
                 />
                 <button
@@ -1361,6 +1504,88 @@ function ChatPage() {
           </main>
         </div>
       </div>
+
+      {/* ===== 전역 채팅 더보기 메뉴 ===== */}
+      {activeMenuConversation && menuPosition && (
+        <div
+          className="sidebar-chat-menu"
+          style={{
+            top: menuPosition.y,
+            left: menuPosition.x,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              openDeleteConfirmModal(
+                activeMenuConversation.id,
+                activeMenuConversation.title
+              );
+              setMenuOpenId(null);
+            }}
+          >
+            대화 삭제
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              openRenameModal(
+                activeMenuConversation.id,
+                activeMenuConversation.title
+              );
+              setMenuOpenId(null);
+            }}
+          >
+            이름 변경하기
+          </button>
+          {menuInFolder && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleMoveConversationToRoot(activeMenuConversation.id);
+                setMenuOpenId(null);
+              }}
+            >
+              채팅 목록으로 이동
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ===== 전역 폴더 더보기 메뉴 ===== */}
+      {activeMenuFolder && folderMenuPosition && (
+        <div
+          className="sidebar-chat-menu"
+          style={{
+            top: folderMenuPosition.y,
+            left: folderMenuPosition.x,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRenameFolder(activeMenuFolder.id);
+              setFolderMenuOpenId(null);
+            }}
+          >
+            폴더 이름 변경
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              openFolderDeleteConfirmModal(
+                activeMenuFolder.id,
+                activeMenuFolder.name
+              );
+              setFolderMenuOpenId(null);
+            }}
+          >
+            폴더 삭제
+          </button>
+        </div>
+      )}
 
       {/* ===== 대화 삭제 확인 모달 ===== */}
       {confirmDelete && (
@@ -1523,12 +1748,6 @@ function ChatPage() {
                     value: e.target.value,
                   }))
                 }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleRenameFolderConfirm();
-                  }
-                }}
                 style={{
                   width: "100%",
                   marginTop: "0.5rem",
@@ -1578,16 +1797,6 @@ function ChatPage() {
                     value: e.target.value,
                   }))
                 }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleRenameConversation(
-                      renameInfo.id,
-                      renameInfo.value
-                    );
-                    setRenameInfo(null);
-                  }
-                }}
                 style={{
                   width: "100%",
                   marginTop: "0.5rem",
