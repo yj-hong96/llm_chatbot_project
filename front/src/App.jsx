@@ -6,7 +6,7 @@ import "./App.css";
 
 const STORAGE_KEY = "chatConversations_v2";
 
-// 사이드바 폭 설정값 (값 그대로 유지)
+// 사이드바 폭 설정값 (기존 값 그대로)
 const SIDEBAR_MIN_WIDTH = 180;   // 사이드바 최소 폭(px)
 const SIDEBAR_MAX_WIDTH = 360;   // 사이드바 최대 폭(px)
 const SIDEBAR_INIT_WIDTH = 220;  // 시작 폭(px)
@@ -325,6 +325,7 @@ function ChatPage() {
   const [folderCreateModalOpen, setFolderCreateModalOpen] = useState(false); // 새 폴더 생성 모달
   const [newFolderName, setNewFolderName] = useState(""); // 새 폴더 이름
   const [folderRenameInfo, setFolderRenameInfo] = useState(null); // 폴더 이름 변경 모달 {id, value}
+  const [pendingFolderConvId, setPendingFolderConvId] = useState(null); // 새 폴더 생성 후 이동할 채팅 ID
   const [sidebarOpen, setSidebarOpen] = useState(false); // 상단 토글(현재 레이아웃에선 사용 X)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false); // 접힘 상태
 
@@ -514,18 +515,32 @@ function ChatPage() {
     if (!trimmed) return;
 
     const now = Date.now();
+    const folderId = String(now);
     const newFolder = {
-      id: String(now),
+      id: folderId,
       name: trimmed,
       createdAt: now,
     };
 
-    setChatState((prev) => ({
-      ...prev,
-      folders: [...(prev.folders || []), newFolder],
-    }));
+    setChatState((prev) => {
+      const nextFolders = [...(prev.folders || []), newFolder];
+      let nextConversations = prev.conversations || [];
+
+      if (pendingFolderConvId) {
+        nextConversations = nextConversations.map((c) =>
+          c.id === pendingFolderConvId ? { ...c, folderId } : c
+        );
+      }
+
+      return {
+        ...prev,
+        folders: nextFolders,
+        conversations: nextConversations,
+      };
+    });
     setFolderCreateModalOpen(false);
     setNewFolderName("");
+    setPendingFolderConvId(null);
   };
 
   // 폴더 이름 변경 모달 열기
@@ -988,7 +1003,24 @@ function ChatPage() {
 
               <div className="sidebar-folder-list">
                 {folders.length === 0 ? (
-                  <div className="sidebar-folder-empty">폴더가 없습니다.</div>
+                  <div
+                    className="sidebar-folder-empty"
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const convId =
+                        draggingId || e.dataTransfer.getData("text/plain");
+                      if (!convId) {
+                        return;
+                      }
+                      setPendingFolderConvId(convId);
+                      setFolderCreateModalOpen(true);
+                    }}
+                  >
+                    폴더가 없습니다.
+                  </div>
                 ) : (
                   folders.map((folder) => {
                     const childConvs = conversations.filter(
@@ -1064,73 +1096,83 @@ function ChatPage() {
 
                         {childConvs.length > 0 && (
                           <div className="sidebar-folder-chats">
-                            {childConvs.map((conv) => (
-                              <div
-                                key={conv.id}
-                                className={
-                                  "sidebar-folder-chat-row" +
-                                  (draggingId === conv.id ? " dragging" : "")
-                                }
-                                draggable
-                                onDragStart={(e) =>
-                                  handleDragStart(e, conv.id)
-                                }
-                                onDragEnd={handleDragEnd}
-                              >
-                                <button
+                            {childConvs.map((conv) => {
+                              const isDragging = draggingId === conv.id;
+                              const isDragOver = dragOverId === conv.id;
+
+                              return (
+                                <div
+                                  key={conv.id}
                                   className={
-                                    "sidebar-folder-chat" +
-                                    (conv.id === currentId ? " active" : "")
+                                    "sidebar-folder-chat-row" +
+                                    (isDragging ? " dragging" : "") +
+                                    (isDragOver ? " drag-over" : "")
                                   }
-                                  onClick={() =>
-                                    handleSelectConversation(conv.id)
+                                  draggable
+                                  onDragStart={(e) =>
+                                    handleDragStart(e, conv.id)
                                   }
+                                  onDragOver={(e) =>
+                                    handleDragOver(e, conv.id)
+                                  }
+                                  onDrop={(e) => handleDrop(e, conv.id)}
+                                  onDragEnd={handleDragEnd}
                                 >
-                                  {conv.title}
-                                </button>
+                                  <button
+                                    className={
+                                      "sidebar-folder-chat" +
+                                      (conv.id === currentId ? " active" : "")
+                                    }
+                                    onClick={() =>
+                                      handleSelectConversation(conv.id)
+                                    }
+                                  >
+                                    {conv.title}
+                                  </button>
 
-                                <button
-                                  className="sidebar-chat-more"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setMenuOpenId((prev) =>
-                                      prev === conv.id ? null : conv.id
-                                    );
-                                  }}
-                                >
-                                  ⋯
-                                </button>
+                                  <button
+                                    className="sidebar-chat-more"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setMenuOpenId((prev) =>
+                                        prev === conv.id ? null : conv.id
+                                      );
+                                    }}
+                                  >
+                                    ⋯
+                                  </button>
 
-                                {menuOpenId === conv.id && (
-                                  <div className="sidebar-chat-menu">
-                                    <button
-                                      onClick={() =>
-                                        openDeleteConfirmModal(
-                                          conv.id,
-                                          conv.title
-                                        )
-                                      }
-                                    >
-                                      대화 삭제
-                                    </button>
-                                    <button
-                                      onClick={() =>
-                                        openRenameModal(conv.id, conv.title)
-                                      }
-                                    >
-                                      이름 변경하기
-                                    </button>
-                                    <button
-                                      onClick={() =>
-                                        handleMoveConversationToRoot(conv.id)
-                                      }
-                                    >
-                                      폴더에서 빼기
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
+                                  {menuOpenId === conv.id && (
+                                    <div className="sidebar-chat-menu">
+                                      <button
+                                        onClick={() =>
+                                          openDeleteConfirmModal(
+                                            conv.id,
+                                            conv.title
+                                          )
+                                        }
+                                      >
+                                        대화 삭제
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          openRenameModal(conv.id, conv.title)
+                                        }
+                                      >
+                                        이름 변경하기
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          handleMoveConversationToRoot(conv.id)
+                                        }
+                                      >
+                                        폴더에서 빼기
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -1147,83 +1189,91 @@ function ChatPage() {
               </div>
 
               {/* ================== 채팅 섹션 ================== */}
-              <div className="sidebar-section-title">채팅</div>
+              <div className="sidebar-chat-section">
+                <div
+                  className="sidebar-section-title"
+                  onDragOver={handleRootListDragOver}
+                  onDrop={handleRootListDrop}
+                >
+                  채팅
+                </div>
 
-              <div
-                className={
-                  "sidebar-chat-list" +
-                  (rootConversations.length > 10
-                    ? " sidebar-chat-list-limit"
-                    : "")
-                }
-                onDragOver={handleRootListDragOver}
-                onDrop={handleRootListDrop}
-              >
-                {rootConversations.map((conv, idx) => {
-                  const isActive = conv.id === currentId;
-                  const isDragging = conv.id === draggingId;
-                  const isDragOver = conv.id === dragOverId;
+                <div
+                  className={
+                    "sidebar-chat-list" +
+                    (rootConversations.length > 15
+                      ? " sidebar-chat-list-limit"
+                      : "")
+                  }
+                  onDragOver={handleRootListDragOver}
+                  onDrop={handleRootListDrop}
+                >
+                  {rootConversations.map((conv, idx) => {
+                    const isActive = conv.id === currentId;
+                    const isDragging = conv.id === draggingId;
+                    const isDragOver = conv.id === dragOverId;
 
-                  return (
-                    <div
-                      key={conv.id}
-                      className={
-                        "sidebar-chat-item" +
-                        (isActive ? " active" : "") +
-                        (isDragging ? " dragging" : "") +
-                        (isDragOver ? " drag-over" : "")
-                      }
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, conv.id)}
-                      onDragOver={(e) => handleDragOver(e, conv.id)}
-                      onDrop={(e) => handleDrop(e, conv.id)}
-                      onDragEnd={handleDragEnd}
-                    >
-                      <button
-                        className="sidebar-chat-main"
-                        onClick={() => handleSelectConversation(conv.id)}
+                    return (
+                      <div
+                        key={conv.id}
+                        className={
+                          "sidebar-chat-item" +
+                          (isActive ? " active" : "") +
+                          (isDragging ? " dragging" : "") +
+                          (isDragOver ? " drag-over" : "")
+                        }
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, conv.id)}
+                        onDragOver={(e) => handleDragOver(e, conv.id)}
+                        onDrop={(e) => handleDrop(e, conv.id)}
+                        onDragEnd={handleDragEnd}
                       >
-                        <span className="sidebar-chat-index">
-                          {idx + 1}
-                        </span>
-                        <span className="sidebar-chat-title">
-                          {conv.title}
-                        </span>
-                      </button>
+                        <button
+                          className="sidebar-chat-main"
+                          onClick={() => handleSelectConversation(conv.id)}
+                        >
+                          <span className="sidebar-chat-index">
+                            {idx + 1}
+                          </span>
+                          <span className="sidebar-chat-title">
+                            {conv.title}
+                          </span>
+                        </button>
 
-                      <button
-                        className="sidebar-chat-more"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setMenuOpenId((prev) =>
-                            prev === conv.id ? null : conv.id
-                          );
-                        }}
-                      >
-                        ⋯
-                      </button>
+                        <button
+                          className="sidebar-chat-more"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuOpenId((prev) =>
+                              prev === conv.id ? null : conv.id
+                            );
+                          }}
+                        >
+                          ⋯
+                        </button>
 
-                      {menuOpenId === conv.id && (
-                        <div className="sidebar-chat-menu">
-                          <button
-                            onClick={() =>
-                              openDeleteConfirmModal(conv.id, conv.title)
-                            }
-                          >
-                            대화 삭제
-                          </button>
-                          <button
-                            onClick={() =>
-                              openRenameModal(conv.id, conv.title)
-                            }
-                          >
-                            이름 변경하기
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                        {menuOpenId === conv.id && (
+                          <div className="sidebar-chat-menu">
+                            <button
+                              onClick={() =>
+                                openDeleteConfirmModal(conv.id, conv.title)
+                              }
+                            >
+                              대화 삭제
+                            </button>
+                            <button
+                              onClick={() =>
+                                openRenameModal(conv.id, conv.title)
+                              }
+                            >
+                              이름 변경하기
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </>
           )}
@@ -1437,6 +1487,7 @@ function ChatPage() {
                 onClick={() => {
                   setFolderCreateModalOpen(false);
                   setNewFolderName("");
+                  setPendingFolderConvId(null);
                 }}
               >
                 취소
