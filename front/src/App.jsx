@@ -38,19 +38,26 @@ function getInitialChatState() {
           Array.isArray(parsed.conversations) &&
           parsed.conversations.length > 0
         ) {
+          const convs = parsed.conversations || [];
+          const folders = parsed.folders || [];
+          let currentId = parsed.currentId;
+          if (!currentId || !convs.some((c) => c.id === currentId)) {
+            currentId = convs[0].id;
+          }
           return {
-            conversations: parsed.conversations,
-            folders: parsed.folders || [],
-            currentId: parsed.currentId || parsed.conversations[0].id,
+            conversations: convs,
+            folders,
+            currentId,
           };
         }
 
         // 예전 구조: 배열만 저장돼 있었던 경우
         if (Array.isArray(parsed) && parsed.length > 0) {
+          const convs = parsed;
           return {
-            conversations: parsed,
+            conversations: convs,
             folders: [],
-            currentId: parsed[0].id,
+            currentId: convs[0].id,
           };
         }
       }
@@ -340,6 +347,9 @@ function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  // 선택된 폴더 id
+  const [selectedFolderId, setSelectedFolderId] = useState(null);
+
   // 사이드바 폭 & 리사이즈 상태
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_INIT_WIDTH);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
@@ -348,6 +358,7 @@ function ChatPage() {
   // 드래그 상태
   const [draggingId, setDraggingId] = useState(null); // 채팅 드래그 중인 ID
   const [dragOverId, setDragOverId] = useState(null); // 채팅 위로 드래그 중
+  
   const [dragOverFolderId, setDragOverFolderId] = useState(null); // 채팅을 폴더 위로 드래그
   const [folderDraggingId, setFolderDraggingId] = useState(null); // 폴더 드래그 중
   const [folderDragOverId, setFolderDragOverId] = useState(null); // 폴더 순서 변경용 드래그 오버
@@ -443,7 +454,7 @@ function ChatPage() {
     renameInfo?.value,
   ]);
 
-  // Delete 키로 현재 선택된 채팅 삭제 모달 열기 (채팅 보관 구역)
+  // Delete 키: 선택된 폴더 있으면 폴더 삭제 모달 / 없으면 현재 대화 삭제 모달
   useEffect(() => {
     const handleDeleteKey = (e) => {
       if (e.key !== "Delete") return;
@@ -459,6 +470,15 @@ function ChatPage() {
         return;
       }
 
+      // 폴더가 선택돼 있으면 폴더 삭제 모달
+      if (selectedFolderId) {
+        const folder = folders.find((f) => f.id === selectedFolderId);
+        if (!folder) return;
+        setConfirmFolderDelete({ id: folder.id, name: folder.name });
+        return;
+      }
+
+      // 그 외에는 현재 대화 삭제
       if (!currentConv) return;
 
       setConfirmDelete({
@@ -469,7 +489,7 @@ function ChatPage() {
 
     window.addEventListener("keydown", handleDeleteKey);
     return () => window.removeEventListener("keydown", handleDeleteKey);
-  }, [currentConv]);
+  }, [currentConv, selectedFolderId, folders]);
 
   // 사이드바 드래그 리사이즈
   useEffect(() => {
@@ -510,14 +530,19 @@ function ChatPage() {
     setIsResizingSidebar(true);
   };
 
-  // 새 채팅
+  // 새 채팅 (루트) - 항상 맨 마지막에 추가
   const handleNewChat = () => {
     const newConv = createNewConversation();
-    setChatState((prev) => ({
-      ...prev,
-      conversations: [newConv, ...(prev.conversations || [])],
-      currentId: newConv.id,
-    }));
+    setChatState((prev) => {
+      const prevList = prev.conversations || [];
+      const newList = [...prevList, newConv]; // 맨 뒤에 추가
+      return {
+        ...prev,
+        conversations: newList,
+        currentId: newConv.id,
+      };
+    });
+    setSelectedFolderId(null); // 폴더 선택 해제
     setErrorInfo(null);
     setInput("");
     setMenuOpenId(null);
@@ -530,35 +555,54 @@ function ChatPage() {
       ...prev,
       currentId: id,
     }));
+    setSelectedFolderId(null); // 폴더 선택 해제
     setErrorInfo(null);
     setInput("");
     setMenuOpenId(null);
     setFolderMenuOpenId(null);
   };
 
-  // 대화 삭제
-  const handleDeleteConversation = (id) => {
-    setChatState((prev) => {
-      let filtered = (prev.conversations || []).filter((c) => c.id !== id);
-      let newCurrentId = prev.currentId;
+    // 대화 삭제
+    const handleDeleteConversation = (id) => {
+      setChatState((prev) => {
+        const list = prev.conversations || [];
 
-      if (filtered.length === 0) {
-        const newConv = createNewConversation();
-        filtered = [newConv];
-        newCurrentId = newConv.id;
-      } else if (prev.currentId === id) {
-        newCurrentId = filtered[0].id;
-      }
+        // 삭제하려는 대화가 현재 전체 목록에서 몇 번째인지
+        const deleteIndex = list.findIndex((c) => c.id === id);
 
-      return {
-        ...prev,
-        conversations: filtered,
-        currentId: newCurrentId,
-      };
-    });
-    setMenuOpenId(null);
-    setFolderMenuOpenId(null);
-  };
+        // 실제로 삭제된 목록
+        let filtered = list.filter((c) => c.id !== id);
+        let newCurrentId = prev.currentId;
+
+        if (filtered.length === 0) {
+          // 남은 대화가 없으면 새 대화 하나 만들고 그걸 선택
+          const newConv = createNewConversation();
+          filtered = [newConv];
+          newCurrentId = newConv.id;
+        } else if (prev.currentId === id) {
+          // 지금 보고 있던 대화를 삭제한 경우에만 포커스 이동
+
+          // 1) 원래 삭제된 위치와 같은 위치에 있는 대화가 있으면 그걸 선택
+          //    (아래에 있던 대화가 당겨져 올라온 자리)
+          // 2) 없다면(마지막을 지운 경우) 맨 마지막(=바로 위에 있던) 대화를 선택
+          const samePosIndex =
+            deleteIndex >= 0 && deleteIndex < filtered.length
+              ? deleteIndex
+              : filtered.length - 1;
+
+          newCurrentId = filtered[samePosIndex].id;
+        }
+
+        return {
+          ...prev,
+          conversations: filtered,
+          currentId: newCurrentId,
+        };
+      });
+
+      setMenuOpenId(null);
+      setFolderMenuOpenId(null);
+    };
 
   // 실제 이름 변경 로직 (대화)
   const handleRenameConversation = (id, newTitle) => {
@@ -596,11 +640,11 @@ function ChatPage() {
     setFolderMenuOpenId(null);
   };
 
-  // 새 폴더 생성 버튼/드롭 → 모달 열기 (convId가 있으면 그 대화를 새 폴더에 넣기)
-  const handleCreateFolder = (convId = null) => {
+  // 새 폴더 생성 버튼 클릭 → 모달 열기
+  const handleCreateFolder = () => {
     setNewFolderName("");
-    setPendingFolderConvId(convId || null);
     setFolderCreateModalOpen(true);
+    setPendingFolderConvId(null);
   };
 
   // 새 폴더 생성 확정
@@ -669,6 +713,7 @@ function ChatPage() {
         c.folderId === folderId ? { ...c, folderId: null } : c
       ),
     }));
+    setSelectedFolderId((prev) => (prev === folderId ? null : prev)); // 선택 해제
   };
 
   // 폴더 위로 드래그 중일 때 (채팅 or 폴더)
@@ -681,13 +726,12 @@ function ChatPage() {
     }
   };
 
-  // 폴더에 드롭 → (1) 폴더 순서 변경 or (2) 채팅을 폴더로 이동
+  // 폴더에 드롭 → (1) 폴더 순서 변경 or (2) 채팅을 폴더로 이동 (+ 폴더를 맨 위로)
   const handleFolderDrop = (e, folderId) => {
     e.preventDefault();
-    e.stopPropagation();
 
     if (folderDraggingId) {
-      // 폴더 순서 변경
+      // 폴더 순서 변경 (fromIndex → toIndex 패턴)
       setChatState((prev) => {
         const list = [...(prev.folders || [])];
         const fromIndex = list.findIndex((f) => f.id === folderDraggingId);
@@ -708,22 +752,32 @@ function ChatPage() {
 
     // 채팅을 폴더로 이동 (폴더 안→폴더, 채팅→폴더 모두)
     const convId = draggingId || e.dataTransfer.getData("text/plain");
-    if (
-      !convId ||
-      !(conversations || []).some((c) => c.id === convId)
-    ) {
+    if (!convId) {
       setDraggingId(null);
       setDragOverId(null);
       setDragOverFolderId(null);
       return;
     }
 
-    setChatState((prev) => ({
-      ...prev,
-      conversations: (prev.conversations || []).map((c) =>
+    setChatState((prev) => {
+      const nextConversations = (prev.conversations || []).map((c) =>
         c.id === convId ? { ...c, folderId } : c
-      ),
-    }));
+      );
+
+      // 채팅을 옮긴 폴더를 폴더 목록 맨 위로 이동
+      const foldersCopy = [...(prev.folders || [])];
+      const idx = foldersCopy.findIndex((f) => f.id === folderId);
+      if (idx > 0) {
+        const [f] = foldersCopy.splice(idx, 1);
+        foldersCopy.unshift(f);
+      }
+
+      return {
+        ...prev,
+        conversations: nextConversations,
+        folders: foldersCopy,
+      };
+    });
 
     setDraggingId(null);
     setDragOverId(null);
@@ -745,6 +799,7 @@ function ChatPage() {
   // 드래그 시작 (폴더)
   const handleFolderItemDragStart = (e, folderId) => {
     setFolderDraggingId(folderId);
+    setSelectedFolderId(folderId); // 드래그 시작 시 해당 폴더 선택
     setFolderDragOverId(null);
     setDragOverFolderId(null);
     setDraggingId(null);
@@ -775,7 +830,8 @@ function ChatPage() {
     }
   };
 
-  // 채팅 아이템 위로 드롭 (채팅 구역용) → 순서 변경 + 폴더 해제
+  // 채팅 아이템 위로 드롭 (채팅 구역) → 순서 변경 + 폴더 해제
+  // 폴더 이동과 동일하게 fromIndex/toIndex 스왑 패턴 사용
   const handleDropOnRootItem = (e, targetConvId) => {
     e.preventDefault();
     e.stopPropagation();
@@ -877,10 +933,7 @@ function ChatPage() {
     }
 
     const convId = draggingId || e.dataTransfer.getData("text/plain");
-    if (
-      !convId ||
-      !(conversations || []).some((c) => c.id === convId)
-    ) {
+    if (!convId || !(conversations || []).some((c) => c.id === convId)) {
       setDraggingId(null);
       setDragOverId(null);
       setDragOverFolderId(null);
@@ -1159,15 +1212,13 @@ function ChatPage() {
                       e.preventDefault();
                     }}
                     onDrop={(e) => {
+                      // 폴더가 하나도 없을 때: 채팅을 끌어와 드롭하면 새 폴더 만들기 모달
                       e.preventDefault();
                       const convId =
                         draggingId || e.dataTransfer.getData("text/plain");
-                      if (
-                        !convId ||
-                        !(conversations || []).some((c) => c.id === convId)
-                      )
-                        return;
-                      handleCreateFolder(convId);
+                      if (!convId) return;
+                      setPendingFolderConvId(convId);
+                      setFolderCreateModalOpen(true);
                     }}
                   >
                     폴더가 없습니다.
@@ -1182,6 +1233,8 @@ function ChatPage() {
                         key={folder.id}
                         className={
                           "sidebar-folder-item" +
+                          (selectedFolderId === folder.id ? " selected" : "") +
+                          (folderDraggingId === folder.id ? " dragging" : "") +
                           (dragOverFolderId === folder.id ||
                           folderDragOverId === folder.id
                             ? " drag-over"
@@ -1195,7 +1248,14 @@ function ChatPage() {
                         onDrop={(e) => handleFolderDrop(e, folder.id)}
                         onDragEnd={handleFolderItemDragEnd}
                       >
-                        <div className="sidebar-folder-header">
+                        <div
+                          className="sidebar-folder-header"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // 폴더 클릭 → 선택만 (삭제는 Delete 키나 더보기 메뉴)
+                            setSelectedFolderId(folder.id);
+                          }}
+                        >
                           <span className="sidebar-folder-name">
                             {folder.name}
                           </span>
@@ -1252,10 +1312,7 @@ function ChatPage() {
                                     (isDragging ? " dragging" : "") +
                                     (isDragOver ? " drag-over" : "")
                                   }
-                                  draggable
-                                  onDragStart={(e) =>
-                                    handleDragStart(e, conv.id)
-                                  }
+                                  // 드롭 영역은 row에 유지
                                   onDragOver={(e) =>
                                     handleDragOver(e, conv.id)
                                   }
@@ -1266,8 +1323,8 @@ function ChatPage() {
                                       folder.id
                                     )
                                   }
-                                  onDragEnd={handleDragEnd}
                                 >
+                                  {/* 버튼 자체를 드래그 가능하게 */}
                                   <button
                                     className={
                                       "sidebar-folder-chat" +
@@ -1276,6 +1333,11 @@ function ChatPage() {
                                     onClick={() =>
                                       handleSelectConversation(conv.id)
                                     }
+                                    draggable
+                                    onDragStart={(e) =>
+                                      handleDragStart(e, conv.id)
+                                    }
+                                    onDragEnd={handleDragEnd}
                                   >
                                     {conv.title}
                                   </button>
@@ -1317,21 +1379,18 @@ function ChatPage() {
 
                 <button
                   className="sidebar-new-folder-btn"
-                  onClick={() => handleCreateFolder(null)}
+                  onClick={handleCreateFolder}
+                  // 채팅을 끌어서 +새 폴더 위에 드롭하면 새 폴더 만들기 모달
                   onDragOver={(e) => {
                     e.preventDefault();
                   }}
                   onDrop={(e) => {
                     e.preventDefault();
-                    e.stopPropagation();
                     const convId =
                       draggingId || e.dataTransfer.getData("text/plain");
-                    if (
-                      !convId ||
-                      !(conversations || []).some((c) => c.id === convId)
-                    )
-                      return;
-                    handleCreateFolder(convId);
+                    if (!convId) return;
+                    setPendingFolderConvId(convId);
+                    setFolderCreateModalOpen(true);
                   }}
                 >
                   + 새 폴더
@@ -1349,7 +1408,7 @@ function ChatPage() {
                 <div
                   className={
                     "sidebar-chat-list" +
-                    (rootConversations.length > 15
+                    (rootConversations.length > 20
                       ? " sidebar-chat-list-limit"
                       : "")
                   }
@@ -1647,7 +1706,7 @@ function ChatPage() {
             <div className="error-modal-body">
               <p className="error-modal-guide">
                 이 폴더를 정말 삭제하시겠습니까? 폴더 안의 채팅은 삭제되지
-                않고 왼쪽 &quot;채팅&quot; 목록으로 이동합니다.
+                않고 아래 &quot;채팅&quot; 목록으로 이동합니다.
               </p>
               <p className="error-modal-hint">
                 폴더 이름: {confirmFolderDelete.name || "이름 없음"}

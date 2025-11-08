@@ -166,9 +166,9 @@ body {
   flex: 1;
   display: flex;
   width: 90vw;
-  height: 90vh;
+  height: 92vh; /* 세로 영역 약간 넓게 */
   max-width: 90vw;
-  max-height: 90vh;
+  max-height: 92vh;
   min-width: 5vw;
   min-height: 5vh;
   margin: auto auto auto 0; /* 위/아래는 가운데, 좌측 0으로 붙이기 */
@@ -267,7 +267,15 @@ body {
 
 /* 채팅 섹션을 아래로 내리기 위한 래퍼 */
 .sidebar-chat-section {
-  margin-top: 40px;
+  margin-top: 10px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e5e7eb;      /* 채팅 구역 테두리 */
+  border-radius: 0.6rem;
+  padding: 4px 4px 6px;
+  background: #fafafa;
 }
 
 .sidebar-chat-list {
@@ -396,9 +404,9 @@ body {
   box-shadow: 0 0 0 1px #6366f1;
 }
 
-/* 채팅 개수 많을 때 내부 스크롤 (15개 이후) */
+/* 채팅 개수 많을 때 내부 스크롤 (20개 이후) */
 .sidebar-chat-list.sidebar-chat-list-limit {
-  max-height: 22rem;
+  max-height: calc(100vh - 260px);
   overflow-y: auto;
 }
 
@@ -413,10 +421,11 @@ body {
   flex-direction: column;
   gap: 4px;
   margin-top: 4px;
-  padding-top: 4px;
-  border-top: 1px solid #e5e7eb;
   margin-bottom: 8px;
-  transition: max-height 0.2s ease, opacity 0.2s ease;
+  border: 1px solid #e5e7eb;      /* 폴더 구역 테두리 */
+  border-radius: 0.6rem;
+  padding: 4px 4px 6px;
+  background: #fafafa;
 }
 
 .sidebar-folder-empty {
@@ -756,16 +765,32 @@ body {
   position: relative;
   padding: 4px 6px;
   border-radius: 0.5rem;
-  background: #26272f;
-  border: 1px solid #353641;
-  cursor: default;
+  background: #ffffff;                /* ★ 폴더 배경: 흰색 */
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
   transition: background 0.16s ease-out, border-color 0.16s ease-out,
-    transform 0.16s ease-out, box-shadow 0.16s ease-out;
+    transform 0.16s ease-out, box-shadow 0.16s ease-out, opacity 0.16s ease-out;
 }
 
+/* 폴더 드래그 모션 (채팅과 동일 느낌) */
+.sidebar-folder-item.dragging {
+  opacity: 0.7;
+  transform: scale(0.98);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* 폴더 위로 드래그 올라갔을 때 */
 .sidebar-folder-item.drag-over {
-  border-color: #6366f1;
-  background: #2f3140;
+  border-color: #f97373;              /* 연한 레드 테두리 */
+  background: #fff5f5;                /* 옅은 레드 배경 */
+}
+
+/* 폴더 선택 시 테두리 강조 (색 + 두께 + 살짝 띄움) */
+.sidebar-folder-item.selected {
+  border-color: #d92c2c;              /* ★ 레드 농도 더 진하게 */
+  box-shadow: 0 0 0 2px rgba(217, 44, 44, 0.85);
+  background: #fff5f5;
+  transform: translateY(-1px);
 }
 
 .sidebar-folder-header {
@@ -776,12 +801,12 @@ body {
 
 .sidebar-folder-name {
   font-size: 0.8rem;
-  color: #e5e5f0;
+  color: #111827;                     /* 흰 배경에 어두운 글자 */
 }
 
 .sidebar-folder-count {
   font-size: 0.7rem;
-  color: #a1a1aa;
+  color: #6b7280;
 }
 
 .sidebar-folder-chats {
@@ -791,14 +816,15 @@ body {
   gap: 2px;
 }
 
+/* 폴더 안 개별 채팅 행 */
 .sidebar-folder-chat-row {
   display: flex;
   align-items: center;
-  gap: 2px;
-  border-radius: 0.5rem;
-  padding: 2px 2px;
-  transition: background 0.14s ease-out, transform 0.14s ease-out,
-    box-shadow 0.14s ease-out, opacity 0.14s ease-out;
+  gap: 4px;
+  padding: 2px 0;
+  border-radius: 0.45rem;
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out,
+    background 0.12s ease-out, opacity 0.12s ease-out;
 }
 
 .sidebar-folder-chat-row.dragging {
@@ -808,7 +834,7 @@ body {
 }
 
 .sidebar-folder-chat-row.drag-over {
-  background: #30313f;
+  background: #e5e7eb;
   box-shadow: 0 0 0 1px #6366f1;
 }
 
@@ -817,22 +843,22 @@ body {
   text-align: left;
   border: none;
   background: transparent;
-  color: #d4d4dd;
+  color: #111827;                     /* 폴더 안 채팅 글자: 어두운 색 */
   font-size: 0.78rem;
   padding: 2px 4px;
   border-radius: 0.4rem;
   cursor: pointer;
   transition: background 0.14s ease-out, transform 0.14s ease-out,
-    box-shadow 0.14s ease-out;
+    box-shadow 0.14s ease-out, color 0.14s ease-out;
 }
 
 .sidebar-folder-chat:hover {
-  background: #3a3b47;
+  background: #f3f4f6;
   transform: translateX(1px);
 }
 
 .sidebar-folder-chat.active {
-  background: #4a4b59;
+  background: #e5e7eb;
 }
 
 .sidebar-new-folder-btn {
@@ -875,4 +901,87 @@ body {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+/* =========================================================
+   [추가] 요구사항 1~4 반영용 스타일 (기존 코드 수정 없이 추가)
+   ========================================================= */
+
+/* 1,3. 폴더가 채팅보다 상위 클래스: 
+   - 폴더 구역(폴더)
+   - 채팅 구역(채팅)
+   - 대화 기록(채팅 기록)
+   - 폴더(사용자가 만든 폴더) 라벨링 */
+
+/* 첫 번째 섹션 타이틀(폴더 섹션) → '폴더 구역(폴더)' 로 표시 */
+.chat-sidebar > .sidebar-section-title:first-of-type {
+  font-size: 0;           /* 기존 텍스트(폴더) 숨기기 */
+  position: relative;
+}
+
+.chat-sidebar > .sidebar-section-title:first-of-type::before {
+  content: "폴더 구역(폴더)";
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+/* 채팅 섹션 타이틀 → '채팅 구역(채팅)' 로 표시 */
+.sidebar-chat-section .sidebar-section-title {
+  font-size: 0;           /* 기존 텍스트(채팅) 숨기기 */
+  position: relative;
+}
+
+.sidebar-chat-section .sidebar-section-title::before {
+  content: "채팅 구역(채팅)";
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+/* 폴더 안의 채팅 목록 상단에 '대화 기록(채팅 기록)' 라벨 추가 */
+.sidebar-folder-chats::before {
+  content: "대화 기록(채팅 기록)";
+  display: block;
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin: 2px 2px 4px;
+}
+
+/* 폴더가 없을 때 문구를 '폴더(사용자가 만든 폴더)가 없습니다.' 느낌으로 */
+.sidebar-folder-empty {
+  font-size: 0;          /* 기존 텍스트 숨기고 */
+  position: relative;
+}
+
+.sidebar-folder-empty::before {
+  content: "폴더(사용자가 만든 폴더)가 없습니다.";
+  font-size: 0.78rem;
+  color: #9ca3af;
+}
+
+/* 4. 크롬 창이 작아져도 채팅 기록의 더보기(⋯) 버튼은 항상 보이도록 처리 */
+
+/* 사이드바 채팅 구역의 각 채팅 기록 행 */
+.sidebar-chat-item {
+  overflow: hidden;      /* 가로 공간 줄어도 내부 컨텐츠 자르기 */
+}
+
+.sidebar-chat-main {
+  min-width: 0;          /* 제목 쪽이 먼저 줄어들 수 있게 */
+}
+
+.sidebar-chat-more {
+  flex-shrink: 0;        /* ⋯ 버튼은 줄어들지 않도록 고정 */
+}
+
+/* 폴더 안 채팅 기록 행도 동일하게 처리 */
+.sidebar-folder-chat-row {
+  overflow: hidden;
+}
+
+.sidebar-folder-chat {
+  min-width: 0;
+}
+
+.sidebar-folder-chat-row .sidebar-chat-more {
+  flex-shrink: 0;
 }
