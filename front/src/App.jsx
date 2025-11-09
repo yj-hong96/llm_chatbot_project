@@ -1,7 +1,9 @@
-// 메인/채팅 라우팅 + 대화 상태/저장 + 사이드바/드래그 정렬
-// + 로딩/에러 모달 + 삭제/이름변경 모달 + 사이드바 토글/리사이즈
-// + 폴더↔폴더/폴더↔루트 DnD + 폴더 헤더 드롭 + 행 전체 드래그
-// + Delete/Enter 키 처리 + 드래그 자동 스크롤
+// app.jsx
+// =========================================================
+// 메인/챗 라우팅 + 사이드바(폴더·채팅) + 드래그/드롭 + 모달 + 에러 처리
+// (홈 화면은 변경 없음. 채팅 페이지만 개선)
+// =========================================================
+
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
@@ -13,7 +15,9 @@ const SIDEBAR_MIN_WIDTH = 180;
 const SIDEBAR_MAX_WIDTH = 360;
 const SIDEBAR_INIT_WIDTH = 220;
 
-// 새 대화(기본 인사 포함) 하나 생성
+// ---------------------------------------------------------
+// 유틸: 새 대화(기본 인사 포함) 생성
+// ---------------------------------------------------------
 function createNewConversation() {
   const now = Date.now();
   return {
@@ -26,7 +30,9 @@ function createNewConversation() {
   };
 }
 
-// localStorage에서 대화 리스트 불러오기
+// ---------------------------------------------------------
+// 유틸: 초기 상태 로드(localStorage 호환)
+// ---------------------------------------------------------
 function getInitialChatState() {
   if (typeof window !== "undefined") {
     try {
@@ -46,21 +52,13 @@ function getInitialChatState() {
           if (!currentId || !convs.some((c) => c.id === currentId)) {
             currentId = convs[0].id;
           }
-          return {
-            conversations: convs,
-            folders,
-            currentId,
-          };
+          return { conversations: convs, folders, currentId };
         }
 
         // 예전 구조: 배열만 저장돼 있었던 경우
         if (Array.isArray(parsed) && parsed.length > 0) {
           const convs = parsed;
-          return {
-            conversations: convs,
-            folders: [],
-            currentId: convs[0].id,
-          };
+          return { conversations: convs, folders: [], currentId: convs[0].id };
         }
       }
     } catch (e) {
@@ -71,7 +69,38 @@ function getInitialChatState() {
   return { conversations: [conv], folders: [], currentId: conv.id };
 }
 
-// 에러 텍스트 -> 한글 안내 + 해결책 + 상세정보
+// ---------------------------------------------------------
+// 홈 페이지(변경 금지)
+// ---------------------------------------------------------
+function HomePage() {
+  const navigate = useNavigate();
+
+  return (
+    <div className="page home-page">
+      <header className="app-header">
+        <div className="logo-box" onClick={() => window.location.reload()}>
+          <h1 className="logo-text">챗봇</h1>
+        </div>
+      </header>
+
+      <main className="home-main">
+        <div className="hero-image">
+          <img className="hero-bg" src="/img/homepage.jpg" alt="홈 배경" />
+        </div>
+        <button
+          className="start-chat-btn"
+          onClick={() => navigate("/chat", { state: { newChat: true } })}
+        >
+          채팅 시작 하기
+        </button>
+      </main>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------
+// 에러 텍스트 파싱 → 사용자 친화적 안내
+// ---------------------------------------------------------
 function makeErrorInfo(rawError) {
   const text =
     typeof rawError === "string" ? rawError : JSON.stringify(rawError, null, 2);
@@ -81,9 +110,7 @@ function makeErrorInfo(rawError) {
     text.match(/Error code:\s*(\d{3})/) ||
     text.match(/"status"\s*:\s*(\d{3})/) ||
     text.match(/"statusCode"\s*:\s*(\d{3})/);
-  if (codeMatch) {
-    errorCode = codeMatch[1];
-  }
+  if (codeMatch) errorCode = codeMatch[1];
 
   const base = { detail: text, code: errorCode };
 
@@ -93,8 +120,7 @@ function makeErrorInfo(rawError) {
     text.includes("rate_limit_exceeded") ||
     text.includes("RateLimit") ||
     text.includes("Too Many Requests") ||
-    (text.toLowerCase().includes("quota") &&
-      text.toLowerCase().includes("token"))
+    (text.toLowerCase().includes("quota") && text.toLowerCase().includes("token"))
   ) {
     const code = errorCode || "429";
     return {
@@ -176,7 +202,7 @@ function makeErrorInfo(rawError) {
       guide:
         "백엔드의 /chat 같은 엔드포인트 주소가 잘못되었거나, 서버에 해당 경로가 없습니다.",
       hint:
-        "fetch에 사용한 URL(포트 번호 포함)과 Flask 라우트(@app.route('/chat'))가 정확히 일치하는지 확인해 주세요.",
+        "fetch에 사용한 URL(포트 포함)과 Flask 라우트(@app.route('/chat'))가 정확히 일치하는지 확인해 주세요.",
     };
   }
 
@@ -287,7 +313,9 @@ function makeErrorInfo(rawError) {
   };
 }
 
-// 첫 번째 사용자 메시지로 사이드바 제목 요약
+// ---------------------------------------------------------
+// 유틸: 첫 사용자 메시지로 사이드바 제목 요약
+// ---------------------------------------------------------
 function summarizeTitleFromMessages(messages) {
   const firstUser = messages.find((m) => m.role === "user");
   if (!firstUser || !firstUser.text) return "새 대화";
@@ -296,52 +324,55 @@ function summarizeTitleFromMessages(messages) {
   return t.length > 18 ? t.slice(0, 18) + "…" : t;
 }
 
-// 드래그 중 컨테이너 가장자리 근처에서 자동 스크롤
-function autoScrollWhileDragging(e, opts = { edge: 28, step: 10 }) {
-  const el = e.currentTarget;
-  if (!el) return;
-  const rect = el.getBoundingClientRect();
-  const y = e.clientY;
-  const edge = opts.edge || 28;
-  const step = opts.step || 10;
+// ---------------------------------------------------------
+// 유틸: 리스트 자동 스크롤(드래그 시 상/하단 근접 스크롤)
+// ---------------------------------------------------------
+function autoScroll(container, clientY) {
+  if (!container) return;
+  const rect = container.getBoundingClientRect();
+  const margin = 36;
+  const maxSpeed = 16;
+  let dy = 0;
 
-  if (y < rect.top + edge) {
-    el.scrollTop -= step;
-  } else if (y > rect.bottom - edge) {
-    el.scrollTop += step;
+  if (clientY < rect.top + margin) {
+    dy = -((rect.top + margin) - clientY) / (margin / maxSpeed);
+  } else if (clientY > rect.bottom - margin) {
+    dy = (clientY - (rect.bottom - margin)) / (margin / maxSpeed);
+  }
+
+  if (dy !== 0) {
+    container.scrollTop += dy;
   }
 }
 
-function HomePage() {
-  const navigate = useNavigate();
-
+// ---------------------------------------------------------
+// 유틸: DataTransfer에서 채팅/폴더 ID 안전 추출
+// ---------------------------------------------------------
+function getDraggedChatId(e) {
   return (
-    <div className="page home-page">
-      <header className="app-header">
-        <div className="logo-box" onClick={() => window.location.reload()}>
-          <h1 className="logo-text">챗봇</h1>
-        </div>
-      </header>
-
-      <main className="home-main">
-        <div className="hero-image">
-          <img className="hero-bg" src="/img/homepage.jpg" alt="홈 배경" />
-        </div>
-        <button
-          className="start-chat-btn"
-          onClick={() => navigate("/chat", { state: { newChat: true } })}
-        >
-          채팅 시작 하기
-        </button>
-      </main>
-    </div>
+    e.dataTransfer.getData("application/x-chat-id") ||
+    e.dataTransfer.getData("text/x-chat-id") ||
+    e.dataTransfer.getData("text/plain") ||
+    ""
+  );
+}
+function getDraggedFolderId(e) {
+  return (
+    e.dataTransfer.getData("application/x-folder-id") ||
+    e.dataTransfer.getData("text/x-folder-id") ||
+    e.dataTransfer.getData("text/plain") ||
+    ""
   );
 }
 
+// =========================================================
+// 채팅 페이지
+// =========================================================
 function ChatPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // ----------------------------- 데이터/선택/모달/드래그/사이드바 상태
   const [chatState, setChatState] = useState(getInitialChatState);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -349,9 +380,9 @@ function ChatPage() {
   const [focusArea, setFocusArea] = useState("chat"); // 'chat' | 'folder'
 
   // 채팅용 더보기 메뉴
-  const [menuOpenId, setMenuOpenId] = useState(null); // 열려있는 대화 ID
-  const [menuPosition, setMenuPosition] = useState(null); // {x, y}
-  const [menuInFolder, setMenuInFolder] = useState(false); // 폴더 안 대화인지 여부
+  const [menuOpenId, setMenuOpenId] = useState(null);
+  const [menuPosition, setMenuPosition] = useState(null); // {x,y}
+  const [menuInFolder, setMenuInFolder] = useState(false);
 
   // 폴더용 더보기 메뉴
   const [folderMenuOpenId, setFolderMenuOpenId] = useState(null);
@@ -359,13 +390,13 @@ function ChatPage() {
 
   const [confirmDelete, setConfirmDelete] = useState(null); // {id, title}
   const [renameInfo, setRenameInfo] = useState(null); // {id, value}
-
   const [confirmFolderDelete, setConfirmFolderDelete] = useState(null); // {id, name}
   const [folderCreateModalOpen, setFolderCreateModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [folderRenameInfo, setFolderRenameInfo] = useState(null); // {id, value}
   const [pendingFolderConvId, setPendingFolderConvId] = useState(null); // 새 폴더 생성 후 넣을 대화 ID
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // 선택된 폴더 id
@@ -383,6 +414,10 @@ function ChatPage() {
   const [folderDraggingId, setFolderDraggingId] = useState(null); // 폴더 드래그 중
   const [folderDragOverId, setFolderDragOverId] = useState(null); // 폴더 순서 변경용 드래그 오버
 
+  // auto-scroll을 위한 ref
+  const rootListRef = useRef(null);
+  const folderChatsRefs = useRef({}); // { [folderId]: HTMLElement }
+
   // chatState 분해
   const conversations = chatState.conversations || [];
   const folders = chatState.folders || [];
@@ -391,32 +426,25 @@ function ChatPage() {
     conversations.find((c) => c.id === currentId) || conversations[0];
   const messages = currentConv ? currentConv.messages : [];
 
-  // 대화 목록 + 폴더 저장
+  // ----------------------------- 저장: 대화 목록 + 폴더
   useEffect(() => {
     try {
-      const payload = {
-        conversations,
-        folders,
-        currentId,
-      };
+      const payload = { conversations, folders, currentId };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch (e) {
       console.error("대화 목록 저장 중 오류:", e);
     }
   }, [conversations, folders, currentId]);
 
-  // 채팅창 끝으로 스크롤
+  // ----------------------------- 채팅창 끝으로 스크롤
   const messagesEndRef = useRef(null);
   useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "end",
-      });
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
     }
   }, [messages, loading]);
 
-  // 빈 곳 클릭 시 더보기 메뉴 닫기
+  // ----------------------------- 빈 곳 클릭 시 더보기 메뉴 닫기
   useEffect(() => {
     const handleWindowClick = () => {
       setMenuOpenId(null);
@@ -426,9 +454,19 @@ function ChatPage() {
     return () => window.removeEventListener("click", handleWindowClick);
   }, []);
 
-  // 엔터키로 모달의 기본 동작(변경/삭제/예)을 수행
+  // ----------------------------- 단축키: ESC로 닫기 / Enter로 확정
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        setConfirmDelete(null);
+        setConfirmFolderDelete(null);
+        setFolderCreateModalOpen(false);
+        setFolderRenameInfo(null);
+        setRenameInfo(null);
+        setMenuOpenId(null);
+        setFolderMenuOpenId(null);
+        return;
+      }
       if (e.key !== "Enter") return;
 
       if (confirmDelete) {
@@ -456,9 +494,17 @@ function ChatPage() {
       }
     };
 
-    if (confirmDelete || confirmFolderDelete || folderRenameInfo || renameInfo) {
-      window.addEventListener("keydown", handleKeyDown);
-      return () => window.removeEventListener("keydown", handleKeyDown);
+    if (
+      confirmDelete ||
+      confirmFolderDelete ||
+      folderRenameInfo ||
+      renameInfo ||
+      menuOpenId ||
+      folderMenuOpenId ||
+      folderCreateModalOpen
+    ) {
+      window.addEventListener("keydown", onKey);
+      return () => window.removeEventListener("keydown", onKey);
     }
   }, [
     confirmDelete,
@@ -467,9 +513,12 @@ function ChatPage() {
     folderRenameInfo?.value,
     renameInfo,
     renameInfo?.value,
+    menuOpenId,
+    folderMenuOpenId,
+    folderCreateModalOpen,
   ]);
 
-  // Delete 키: 포커스 영역 기준으로 삭제 모달
+  // ----------------------------- Delete 키: focusArea 우선 (chat/folder)
   useEffect(() => {
     const handleDeleteKey = (e) => {
       if (e.key !== "Delete") return;
@@ -484,12 +533,14 @@ function ChatPage() {
         return;
       }
 
+      // 포커스가 'chat'이면 채팅 삭제
       if (focusArea === "chat") {
         if (!currentConv) return;
         setConfirmDelete({ id: currentConv.id, title: currentConv.title });
         return;
       }
 
+      // 포커스가 'folder'이면 폴더 삭제
       if (focusArea === "folder") {
         if (selectedFolderId) {
           const folder = folders.find((f) => f.id === selectedFolderId);
@@ -514,7 +565,7 @@ function ChatPage() {
     return () => window.removeEventListener("keydown", handleDeleteKey);
   }, [currentConv, selectedFolderId, folders, focusArea]);
 
-  // 사이드바 드래그 리사이즈
+  // ----------------------------- 사이드바 드래그 리사이즈
   useEffect(() => {
     if (!isResizingSidebar) return;
 
@@ -526,7 +577,6 @@ function ChatPage() {
 
       if (nextWidth < SIDEBAR_MIN_WIDTH) nextWidth = SIDEBAR_MIN_WIDTH;
       if (nextWidth > SIDEBAR_MAX_WIDTH) nextWidth = SIDEBAR_MAX_WIDTH;
-
       setSidebarWidth(nextWidth);
     };
 
@@ -546,95 +596,75 @@ function ChatPage() {
   const handleSidebarResizeMouseDown = (e) => {
     if (sidebarCollapsed) return;
     e.preventDefault();
-    sidebarResizeRef.current = {
-      startX: e.clientX,
-      startWidth: sidebarWidth,
-    };
+    sidebarResizeRef.current = { startX: e.clientX, startWidth: sidebarWidth };
     setIsResizingSidebar(true);
   };
 
-  // 새 채팅 (루트) - 항상 맨 마지막에 추가
+  // ----------------------------- 새 채팅 (루트)
   const handleNewChat = () => {
     const newConv = createNewConversation();
     setChatState((prev) => {
       const prevList = prev.conversations || [];
-      const newList = [...prevList, newConv]; // 맨 뒤에 추가
-      return {
-        ...prev,
-        conversations: newList,
-        currentId: newConv.id,
-      };
+      const newList = [...prevList, newConv];
+      return { ...prev, conversations: newList, currentId: newConv.id };
     });
-    setSelectedFolderId(null); // 폴더 선택 해제
+    setSelectedFolderId(null);
     setErrorInfo(null);
     setInput("");
     setMenuOpenId(null);
     setFolderMenuOpenId(null);
-    setFocusArea("chat"); // 새 채팅 후 채팅 포커스 유지
+    setFocusArea("chat");
   };
 
-  // 홈에서 "채팅 시작 하기"를 눌렀을 때 새 대화 생성
-  useEffect(() => {
-    if (location?.state?.newChat) {
-      handleNewChat();
-      navigate("/chat", { replace: true }); // 중복 생성 방지
-    }
-  }, [location?.state?.newChat, navigate]);
+const startedFromHomeRef = useRef(false);
 
-  // 특정 대화 선택
+// 홈 → 채팅 시작 하기 (StrictMode에서도 1회만 동작)
+useEffect(() => {
+  if (!location?.state?.newChat) return;
+  if (startedFromHomeRef.current) return; // 두 번 실행 방지
+  startedFromHomeRef.current = true;
+
+  handleNewChat();
+  navigate("/chat", { replace: true });   // state 비우면서 교체
+}, [location?.state?.newChat, navigate]);
+
+  // ----------------------------- 대화 선택/삭제/이름변경
   const handleSelectConversation = (id) => {
-    setChatState((prev) => ({
-      ...prev,
-      currentId: id,
-    }));
-    setSelectedFolderId(null); // 폴더 선택 해제
+    setChatState((prev) => ({ ...prev, currentId: id }));
+    setSelectedFolderId(null);
     setErrorInfo(null);
     setInput("");
     setMenuOpenId(null);
     setFolderMenuOpenId(null);
-    setFocusArea("chat"); // 대화 선택 시 채팅 포커스
+    setFocusArea("chat");
   };
 
-  // 대화 삭제
   const handleDeleteConversation = (id) => {
     setChatState((prev) => {
       const list = prev.conversations || [];
-
-      // 삭제하려는 대화가 현재 전체 목록에서 몇 번째인지
       const deleteIndex = list.findIndex((c) => c.id === id);
-
-      // 실제로 삭제된 목록
       let filtered = list.filter((c) => c.id !== id);
       let newCurrentId = prev.currentId;
 
       if (filtered.length === 0) {
-        // 남은 대화가 없으면 새 대화 하나 만들고 그걸 선택
         const newConv = createNewConversation();
         filtered = [newConv];
         newCurrentId = newConv.id;
       } else if (prev.currentId === id) {
-        // 지금 보고 있던 대화를 삭제한 경우에만 포커스 이동
         const samePosIndex =
           deleteIndex >= 0 && deleteIndex < filtered.length
             ? deleteIndex
             : filtered.length - 1;
-
         newCurrentId = filtered[samePosIndex].id;
       }
-
-      return {
-        ...prev,
-        conversations: filtered,
-        currentId: newCurrentId,
-      };
+      return { ...prev, conversations: filtered, currentId: newCurrentId };
     });
 
     setMenuOpenId(null);
     setFolderMenuOpenId(null);
-    setFocusArea("chat"); // 채팅 삭제 후에도 채팅 포커스 유지
+    setFocusArea("chat");
   };
 
-  // 실제 이름 변경 로직 (대화)
   const handleRenameConversation = (id, newTitle) => {
     const trimmed = (newTitle || "").trim();
     if (!trimmed) return;
@@ -649,7 +679,6 @@ function ChatPage() {
     setFolderMenuOpenId(null);
   };
 
-  // 대화 삭제 모달 열기
   const openDeleteConfirmModal = (id, title) => {
     setConfirmDelete({ id, title });
     setMenuOpenId(null);
@@ -657,7 +686,6 @@ function ChatPage() {
     setFocusArea("chat");
   };
 
-  // 폴더 삭제 모달 열기
   const openFolderDeleteConfirmModal = (id, name) => {
     setConfirmFolderDelete({ id, name });
     setFolderMenuOpenId(null);
@@ -665,7 +693,6 @@ function ChatPage() {
     setFocusArea("folder");
   };
 
-  // 대화 이름 변경 모달 열기
   const openRenameModal = (id, title) => {
     setRenameInfo({ id, value: title || "" });
     setMenuOpenId(null);
@@ -673,7 +700,7 @@ function ChatPage() {
     setFocusArea("chat");
   };
 
-  // 새 폴더 생성 버튼 클릭 → 모달 열기
+  // ----------------------------- 폴더 생성/이름변경/삭제
   const handleCreateFolder = () => {
     setNewFolderName("");
     setFolderCreateModalOpen(true);
@@ -681,18 +708,13 @@ function ChatPage() {
     setFocusArea("folder");
   };
 
-  // 새 폴더 생성 확정
   const handleCreateFolderConfirm = () => {
     const trimmed = (newFolderName || "").trim();
     if (!trimmed) return;
 
     const now = Date.now();
     const folderId = String(now);
-    const newFolder = {
-      id: folderId,
-      name: trimmed,
-      createdAt: now,
-    };
+    const newFolder = { id: folderId, name: trimmed, createdAt: now };
 
     setChatState((prev) => {
       const nextFolders = [...(prev.folders || []), newFolder];
@@ -703,30 +725,20 @@ function ChatPage() {
           c.id === pendingFolderConvId ? { ...c, folderId } : c
         );
       }
-
-      return {
-        ...prev,
-        folders: nextFolders,
-        conversations: nextConversations,
-      };
+      return { ...prev, folders: nextFolders, conversations: nextConversations };
     });
     setFolderCreateModalOpen(false);
     setNewFolderName("");
     setPendingFolderConvId(null);
-    setSelectedFolderId(folderId);
-    setFocusArea("folder");
   };
 
-  // 폴더 이름 변경 모달 열기
   const handleRenameFolder = (folderId) => {
     const target = folders.find((f) => f.id === folderId);
     setFolderRenameInfo({ id: folderId, value: target?.name || "" });
     setFolderMenuOpenId(null);
     setMenuOpenId(null);
-    setFocusArea("folder");
   };
 
-  // 폴더 이름 변경 확정
   const handleRenameFolderConfirm = () => {
     if (!folderRenameInfo) return;
     const trimmed = (folderRenameInfo.value || "").trim();
@@ -739,12 +751,10 @@ function ChatPage() {
       ),
     }));
     setFolderRenameInfo(null);
-    setFocusArea("folder");
   };
 
-  // 폴더 삭제 (안의 채팅은 폴더 밖으로 이동)
+  // 폴더 삭제 (안의 채팅은 루트로 이동)
   const handleDeleteFolder = (folderId) => {
-    // 1) 폴더/대화 상태 업데이트
     setChatState((prev) => {
       const list = prev.folders || [];
       const filtered = list.filter((f) => f.id !== folderId);
@@ -758,45 +768,52 @@ function ChatPage() {
       };
     });
 
-    // 2) 선택 포커스 유지/이동
     setSelectedFolderId((prevSelectedId) => {
       if (prevSelectedId !== folderId) return prevSelectedId;
-
-      const list = folders || [];
-      const remaining = list.filter((f) => f.id !== folderId);
-
-      if (remaining.length === 0) {
-        setFocusArea("folder");
-        return null;
-      }
-
-      const deleteIndex = list.findIndex((f) => f.id === folderId);
-      const samePosIndex =
-        deleteIndex >= 0 && deleteIndex < remaining.length
-          ? deleteIndex
-          : remaining.length - 1;
-
-      setFocusArea("folder");
-      return remaining[samePosIndex].id;
+      const remaining = (folders || []).filter((f) => f.id !== folderId);
+      return remaining.length ? remaining[Math.min(0, remaining.length - 1)].id : null;
     });
+
+    setFocusArea("folder");
   };
 
-  // ===== DnD: 폴더/채팅 공통 =====
+  // ----------------------------- 드래그&드롭: 폴더 위로 드래그 시 하이라이트 + 자동 스크롤
   const handleFolderDragOver = (e, folderId) => {
     e.preventDefault();
     if (folderDraggingId) {
-      setFolderDragOverId(folderId);
+      setFolderDragOverId(folderId);      // 폴더 순서 변경 하이라이트
     } else {
-      setDragOverFolderId(folderId);
+      setDragOverFolderId(folderId);      // 채팅 → 폴더 이동 하이라이트
     }
+
+    const el = folderChatsRefs.current[folderId];
+    if (el) autoScroll(el, e.clientY);
   };
 
-  // 폴더에 드롭 → (1) 폴더 순서 변경 or (2) 채팅을 폴더로 이동 (+ 폴더를 맨 위로)
+  // 폴더 헤더에 대화를 드롭했을 때: 해당 폴더로 이동
+  const handleDropChatOnFolderHeader = (e, folderId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const convId = draggingId || getDraggedChatId(e);
+    if (!convId) return;
+
+    setChatState(prev => ({
+      ...prev,
+      conversations: (prev.conversations || []).map(c =>
+        c.id === convId ? { ...c, folderId } : c
+      ),
+    }));
+    setDraggingId(null);
+    setDragOverId(null);
+    setDragOverFolderId(null);
+  };
+
+  // ----------------------------- 드롭: 폴더 영역에 드롭
   const handleFolderDrop = (e, folderId) => {
     e.preventDefault();
 
+    // (1) 폴더 순서 변경
     if (folderDraggingId) {
-      // 폴더 순서 변경 (fromIndex → toIndex 패턴)
       setChatState((prev) => {
         const list = [...(prev.folders || [])];
         const fromIndex = list.findIndex((f) => f.id === folderDraggingId);
@@ -805,19 +822,17 @@ function ChatPage() {
 
         const [moved] = list.splice(fromIndex, 1);
         list.splice(toIndex, 0, moved);
-
         return { ...prev, folders: list };
       });
 
       setFolderDraggingId(null);
       setFolderDragOverId(null);
       setDragOverFolderId(null);
-      setFocusArea("folder");
       return;
     }
 
-    // 채팅을 폴더로 이동 (폴더 안→폴더, 채팅→폴더 모두)
-    const convId = draggingId || e.dataTransfer.getData("text/plain");
+    // (2) 채팅 → 폴더로 이동
+    const convId = draggingId || getDraggedChatId(e);
     if (!convId) {
       setDraggingId(null);
       setDragOverId(null);
@@ -826,32 +841,21 @@ function ChatPage() {
     }
 
     setChatState((prev) => {
+      const exist = (prev.conversations || []).some((c) => c.id === convId);
+      if (!exist) return prev;
+
       const nextConversations = (prev.conversations || []).map((c) =>
         c.id === convId ? { ...c, folderId } : c
       );
-
-      // 채팅을 옮긴 폴더를 폴더 목록 맨 위로 이동
-      const foldersCopy = [...(prev.folders || [])];
-      const idx = foldersCopy.findIndex((f) => f.id === folderId);
-      if (idx > 0) {
-        const [f] = foldersCopy.splice(idx, 1);
-        foldersCopy.unshift(f);
-      }
-
-      return {
-        ...prev,
-        conversations: nextConversations,
-        folders: foldersCopy,
-      };
+      return { ...prev, conversations: nextConversations };
     });
 
     setDraggingId(null);
     setDragOverId(null);
     setDragOverFolderId(null);
-    setFocusArea("folder");
   };
 
-  // 폴더 안 채팅을 폴더 밖(채팅 구역)으로 이동 (더보기 메뉴용)
+  // 폴더 안 채팅을 루트(채팅 구역)으로 이동 (더보기 메뉴)
   const handleMoveConversationToRoot = (id) => {
     setChatState((prev) => ({
       ...prev,
@@ -864,48 +868,49 @@ function ChatPage() {
     setFocusArea("chat");
   };
 
-  // 드래그 시작 (폴더)
+  // ----------------------------- 폴더 드래그 시작/종료 (폴더 정렬용)
   const handleFolderItemDragStart = (e, folderId) => {
     setFolderDraggingId(folderId);
-    setSelectedFolderId(folderId); // 드래그 시작 시 해당 폴더 선택
+    setSelectedFolderId(folderId);
     setFolderDragOverId(null);
     setDragOverFolderId(null);
     setDraggingId(null);
     e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("application/x-folder-id", folderId);
     e.dataTransfer.setData("text/plain", folderId);
   };
-
   const handleFolderItemDragEnd = () => {
     setFolderDraggingId(null);
     setFolderDragOverId(null);
     setDragOverFolderId(null);
   };
 
-  // 드래그 시작 (채팅)
+  // ----------------------------- 채팅 드래그 시작/오버/드롭
   const handleDragStart = (e, id) => {
     setDraggingId(id);
     setDragOverId(null);
     setDragOverFolderId(null);
     setFolderDraggingId(null);
     e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("application/x-chat-id", id);
+    e.dataTransfer.setData("text/x-chat-id", id);
     e.dataTransfer.setData("text/plain", id);
   };
-
   const handleDragOver = (e, id) => {
     e.preventDefault();
     if (id !== dragOverId) setDragOverId(id);
   };
 
-  // 채팅 아이템 위로 드롭 (채팅 구역) → 순서 변경 + 폴더 해제
+  // 루트 채팅 아이템 위로 드롭 → 순서 변경 + 폴더 해제
   const handleDropOnRootItem = (e, targetConvId) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const convId = draggingId || e.dataTransfer.getData("text/plain");
+    const candidate = draggingId || getDraggedChatId(e);
     if (
-      !convId ||
-      convId === targetConvId ||
-      !(conversations || []).some((c) => c.id === convId)
+      !candidate ||
+      candidate === targetConvId ||
+      !(conversations || []).some((c) => c.id === candidate)
     ) {
       setDraggingId(null);
       setDragOverId(null);
@@ -915,7 +920,7 @@ function ChatPage() {
 
     setChatState((prev) => {
       const list = [...(prev.conversations || [])];
-      const fromIndex = list.findIndex((c) => c.id === convId);
+      const fromIndex = list.findIndex((c) => c.id === candidate);
       const toIndex = list.findIndex((c) => c.id === targetConvId);
       if (fromIndex === -1 || toIndex === -1) return prev;
 
@@ -927,26 +932,24 @@ function ChatPage() {
       const insertIndex = newToIndex === -1 ? list.length : newToIndex;
 
       list.splice(insertIndex, 0, moved);
-
       return { ...prev, conversations: list };
     });
 
     setDraggingId(null);
     setDragOverId(null);
     setDragOverFolderId(null);
-    setFocusArea("chat");
   };
 
-  // 폴더 안 채팅 위로 드롭 → 같은 폴더/다른 폴더로 이동 & 순서 변경
+  // 폴더 안 채팅 위로 드롭 → 같은/다른 폴더로 이동 & 순서 변경
   const handleDropOnFolderChat = (e, targetConvId, folderId) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const convId = draggingId || e.dataTransfer.getData("text/plain");
+    const candidate = draggingId || getDraggedChatId(e);
     if (
-      !convId ||
-      convId === targetConvId ||
-      !(conversations || []).some((c) => c.id === convId)
+      !candidate ||
+      candidate === targetConvId ||
+      !(conversations || []).some((c) => c.id === candidate)
     ) {
       setDraggingId(null);
       setDragOverId(null);
@@ -956,7 +959,7 @@ function ChatPage() {
 
     setChatState((prev) => {
       const list = [...(prev.conversations || [])];
-      const fromIndex = list.findIndex((c) => c.id === convId);
+      const fromIndex = list.findIndex((c) => c.id === candidate);
       const toIndex = list.findIndex((c) => c.id === targetConvId);
       if (fromIndex === -1 || toIndex === -1) return prev;
 
@@ -967,28 +970,33 @@ function ChatPage() {
       const insertIndex = newToIndex === -1 ? list.length : newToIndex;
 
       list.splice(insertIndex, 0, moved);
-
       return { ...prev, conversations: list };
     });
 
     setDraggingId(null);
     setDragOverId(null);
     setDragOverFolderId(null);
-    setFocusArea("folder");
   };
 
-  // 채팅 리스트 전체(빈 공간 포함)를 드롭존으로 → 맨 아래로 이동 + 폴더 해제
+  // 폴더 내 채팅 리스트 위에서 드래그(자동 스크롤)
+  const handleFolderChatsDragOver = (e, folderId) => {
+    e.preventDefault();
+    setDragOverFolderId(folderId);
+    const el = folderChatsRefs.current[folderId];
+    if (el) autoScroll(el, e.clientY);
+  };
+
+  // 채팅 섹션(루트) 빈 공간 드롭 → 맨 아래로 이동 + 폴더 해제
   const handleRootListDragOver = (e) => {
     e.preventDefault();
     setDragOverFolderId(null);
-    autoScrollWhileDragging(e, { edge: 28, step: 12 });
+    if (rootListRef.current) autoScroll(rootListRef.current, e.clientY);
   };
-
   const handleRootListDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    // 폴더를 채팅 구역에 드롭하면 아무 일도 안 하도록
+    // 폴더를 채팅 구역에 드롭하면 무시
     if (folderDraggingId) {
       setFolderDraggingId(null);
       setFolderDragOverId(null);
@@ -998,8 +1006,8 @@ function ChatPage() {
       return;
     }
 
-    const convId = draggingId || e.dataTransfer.getData("text/plain");
-    if (!convId || !(conversations || []).some((c) => c.id === convId)) {
+    const candidate = draggingId || getDraggedChatId(e);
+    if (!candidate || !(conversations || []).some((c) => c.id === candidate)) {
       setDraggingId(null);
       setDragOverId(null);
       setDragOverFolderId(null);
@@ -1008,7 +1016,7 @@ function ChatPage() {
 
     setChatState((prev) => {
       const list = [...(prev.conversations || [])];
-      const fromIndex = list.findIndex((c) => c.id === convId);
+      const fromIndex = list.findIndex((c) => c.id === candidate);
       if (fromIndex === -1) return prev;
 
       const [movedRaw] = list.splice(fromIndex, 1);
@@ -1022,7 +1030,6 @@ function ChatPage() {
     setDraggingId(null);
     setDragOverId(null);
     setDragOverFolderId(null);
-    setFocusArea("chat");
   };
 
   const handleDragEnd = () => {
@@ -1033,7 +1040,7 @@ function ChatPage() {
     setFolderDragOverId(null);
   };
 
-  // Flask 서버로 질문 보내기
+  // ----------------------------- 백엔드(Flask)로 질문 보내기
   const sendMessage = async () => {
     const trimmed = input.trim();
     if (!trimmed || loading || !currentConv) return;
@@ -1055,12 +1062,7 @@ function ChatPage() {
           ? conv.title
           : summarizeTitleFromMessages(newMessages);
 
-        return {
-          ...conv,
-          messages: newMessages,
-          updatedAt: now,
-          title: newTitle,
-        };
+        return { ...conv, messages: newMessages, updatedAt: now, title: newTitle };
       });
       return { ...prev, conversations: updated };
     });
@@ -1073,8 +1075,6 @@ function ChatPage() {
       });
 
       const data = await res.json();
-      console.log("test.py 응답:", data);
-
       if (data.error) {
         const info = makeErrorInfo(data.error);
 
@@ -1087,8 +1087,7 @@ function ChatPage() {
               {
                 role: "bot",
                 text:
-                  "죄송합니다. 오류 때문에 지금은 답변을 생성하지 못했습니다. " +
-                  "화면 가운데 나타난 오류 안내 창을 확인해 주세요.",
+                  "죄송합니다. 오류 때문에 지금은 답변을 생성하지 못했습니다. 화면 가운데 나타난 오류 안내 창을 확인해 주세요.",
               },
             ];
             return { ...conv, messages: newMessages, updatedAt: now };
@@ -1103,19 +1102,14 @@ function ChatPage() {
           const now = Date.now();
           const updated = (prev.conversations || []).map((conv) => {
             if (conv.id !== prev.currentId) return conv;
-            const newMessages = [
-              ...conv.messages,
-              { role: "bot", text: answer },
-            ];
+            const newMessages = [...conv.messages, { role: "bot", text: answer }];
             return { ...conv, messages: newMessages, updatedAt: now };
           });
           return { ...prev, conversations: updated };
         });
       }
     } catch (err) {
-      console.error("요청 실패:", err);
       const info = makeErrorInfo(err?.message || err);
-
       setChatState((prev) => {
         const now = Date.now();
         const updated = (prev.conversations || []).map((conv) => {
@@ -1132,7 +1126,6 @@ function ChatPage() {
         });
         return { ...prev, conversations: updated };
       });
-
       setErrorInfo(info);
     } finally {
       setLoading(false);
@@ -1146,7 +1139,6 @@ function ChatPage() {
     }
   };
 
-  // 오류 상세 새 창
   const openErrorDetailWindow = () => {
     if (!errorInfo) return;
     try {
@@ -1155,50 +1147,24 @@ function ChatPage() {
         alert("팝업 차단으로 인해 새로운 창을 열 수 없습니다. 브라우저 팝업 설정을 확인해 주세요.");
         return;
       }
-
       const escapeHtml = (str) =>
-        String(str)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;");
+        String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
       win.document.write(`<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <title>오류 상세 정보</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
-      padding: 16px;
-      white-space: pre-wrap;
-      background: #ffffff;
-      color: #222;
-    }
-    h1 { font-size: 18px; margin-bottom: 8px; }
-    h2 { font-size: 14px; margin-top: 16px; margin-bottom: 4px; }
-    p  { margin: 4px 0; }
-    pre {
-      font-size: 12px;
-      background: #f7f7f7;
-      padding: 12px;
-      border-radius: 8px;
-      max-height: 420px;
-      overflow-y: auto;
-      overflow-x: hidden;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-  </style>
-</head>
+<html lang="ko"><head><meta charset="utf-8" />
+<title>오류 상세 정보</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif;padding:16px;white-space:pre-wrap;background:#fff;color:#222}
+h1{font-size:18px;margin-bottom:8px}h2{font-size:14px;margin:16px 0 4px}
+pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:420px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+</style></head>
 <body>
-  <h1>${escapeHtml(errorInfo.title)}</h1>
-  <p>${escapeHtml(errorInfo.guide)}</p>
-  <p style="color:#666;">${escapeHtml(errorInfo.hint)}</p>
-  <h2>원본 오류 메시지</h2>
-  <pre>${escapeHtml(errorInfo.detail)}</pre>
-</body>
-</html>`);
+<h1>${escapeHtml(errorInfo.title)}</h1>
+<p>${escapeHtml(errorInfo.guide)}</p>
+<p style="color:#666;">${escapeHtml(errorInfo.hint)}</p>
+<h2>원본 오류 메시지</h2>
+<pre>${escapeHtml(errorInfo.detail)}</pre>
+</body></html>`);
       win.document.close();
     } catch (e) {
       console.error("오류 상세 창 생성 중 오류:", e);
@@ -1216,15 +1182,17 @@ function ChatPage() {
     ? folders.find((f) => f.id === folderMenuOpenId)
     : null;
 
+  // ------------------------------------------------------- 렌더링
   return (
     <div className="page chat-page">
-      {/* 상단 헤더(우측 화면 헤더는 아래 chat-shell 내부에 별도 존재) */}
+      {/* (현재는 기능 없음, 레이아웃 유지용) */}
       <button
         className="sidebar-toggle-btn"
         onClick={(e) => {
           e.stopPropagation();
-          setSidebarCollapsed((prev) => !prev);
+          setSidebarOpen((prev) => !prev);
         }}
+        aria-label="사이드바 토글"
       ></button>
 
       <div className="chat-layout">
@@ -1232,14 +1200,13 @@ function ChatPage() {
         <aside
           className={"chat-sidebar" + (sidebarCollapsed ? " collapsed" : "")}
           style={!sidebarCollapsed ? { flex: `0 0 ${sidebarWidth}px` } : undefined}
-          onMouseDown={() => setFocusArea("folder")}
         >
           <div className="sidebar-top">
             {/* 햄버거 메뉴 아이콘 */}
             <button
               className="sidebar-menu-toggle"
               onClick={() => setSidebarCollapsed((prev) => !prev)}
-              title={sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기"}
+              aria-label={sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기"}
             >
               <img src="/img/menu.png" alt="사이드바 접기" />
             </button>
@@ -1267,20 +1234,25 @@ function ChatPage() {
                     className="sidebar-folder-empty"
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => {
-                      // 폴더가 하나도 없을 때: 채팅을 끌어와 드롭하면 새 폴더 만들기 모달
+                      // 폴더가 하나도 없을 때: 채팅을 드롭하면 새 폴더 만들기 모달
                       e.preventDefault();
-                      const convId = draggingId || e.dataTransfer.getData("text/plain");
+                      const convId = draggingId || getDraggedChatId(e);
                       if (!convId) return;
                       setPendingFolderConvId(convId);
                       setFolderCreateModalOpen(true);
-                      setFocusArea("folder");
                     }}
                   >
                     폴더가 없습니다.
                   </div>
                 ) : (
                   folders.map((folder) => {
-                    const childConvs = conversations.filter((c) => c.folderId === folder.id);
+                    const childConvs = conversations.filter(
+                      (c) => c.folderId === folder.id
+                    );
+                    const isDropChat = dragOverFolderId === folder.id && !folderDraggingId;
+                    const isDragOverFolderSort =
+                      folderDragOverId === folder.id && !!folderDraggingId;
+
                     return (
                       <div
                         key={folder.id}
@@ -1288,15 +1260,17 @@ function ChatPage() {
                           "sidebar-folder-item" +
                           (selectedFolderId === folder.id ? " selected" : "") +
                           (folderDraggingId === folder.id ? " dragging" : "") +
-                          (dragOverFolderId === folder.id || folderDragOverId === folder.id ? " drag-over" : "")
+                          (isDragOverFolderSort ? " drag-over" : "") +
+                          (isDropChat ? " drop-chat" : "")
                         }
                         draggable
                         onDragStart={(e) => handleFolderItemDragStart(e, folder.id)}
                         onDragOver={(e) => handleFolderDragOver(e, folder.id)}
                         onDrop={(e) => handleFolderDrop(e, folder.id)}
                         onDragEnd={handleFolderItemDragEnd}
+                        onClick={() => setSelectedFolderId(folder.id)}
+                        aria-label={`폴더 ${folder.name}`}
                       >
-                        {/* 폴더 헤더 자체도 드롭존으로 동작 (채팅을 여기로 끌면 해당 폴더로 이동) */}
                         <div
                           className="sidebar-folder-header"
                           onMouseDown={(e) => {
@@ -1306,15 +1280,20 @@ function ChatPage() {
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedFolderId(folder.id);
-                            setFocusArea("folder");
                           }}
-                          onDragOver={(e) => handleFolderDragOver(e, folder.id)}
-                          onDrop={(e) => handleFolderDrop(e, folder.id)}
+                          // ✅ 폴더 헤더가 '대화 드롭 타깃'이 되도록 처리
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setDragOverFolderId(folder.id);
+                          }}
+                          onDrop={(e) => handleDropChatOnFolderHeader(e, folder.id)}
                         >
                           <span className="sidebar-folder-name">{folder.name}</span>
                           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                             {childConvs.length > 0 && (
-                              <span className="sidebar-folder-count">{childConvs.length}</span>
+                              <span className="sidebar-folder-count">
+                                {childConvs.length}
+                              </span>
                             )}
                             <button
                               className="sidebar-chat-more"
@@ -1327,23 +1306,43 @@ function ChatPage() {
                                 const x = Math.min(rect.right, viewportWidth - menuWidth - 8);
                                 const y = rect.bottom + 4;
                                 setFolderMenuPosition({ x, y });
-                                setMenuOpenId(null); // 채팅 더보기 닫기
+                                setMenuOpenId(null);
                                 setFocusArea("folder");
-                                setFolderMenuOpenId((prev) => (prev === folder.id ? null : folder.id));
+                                setFolderMenuOpenId((prev) =>
+                                  prev === folder.id ? null : folder.id
+                                );
                               }}
+                              aria-label="폴더 더보기"
                             >
                               ⋯
                             </button>
                           </div>
                         </div>
 
+                        {/* 폴더가 비어있어도 드롭 가능 */}
+                        {childConvs.length === 0 && (
+                          <div
+                            className={
+                              "sidebar-folder-empty-drop" +
+                              (dragOverFolderId === folder.id ? " drop-chat" : "")
+                            }
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              setDragOverFolderId(folder.id);
+                            }}
+                            onDrop={(e) => handleDropChatOnFolderHeader(e, folder.id)}
+                          >
+                            대화 없음 — 여기로 드롭
+                          </div>
+                        )}
+
                         {childConvs.length > 0 && (
                           <div
                             className="sidebar-folder-chats"
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              autoScrollWhileDragging(e, { edge: 22, step: 10 });
+                            ref={(el) => {
+                              folderChatsRefs.current[folder.id] = el;
                             }}
+                            onDragOver={(e) => handleFolderChatsDragOver(e, folder.id)}
                           >
                             {childConvs.map((conv) => {
                               const isDragging = draggingId === conv.id;
@@ -1357,18 +1356,24 @@ function ChatPage() {
                                     (isDragging ? " dragging" : "") +
                                     (isDragOver ? " drag-over" : "")
                                   }
-                                  // 행 전체도 드래그/드롭 가능
-                                  draggable
-                                  onDragStart={(e) => handleDragStart(e, conv.id)}
-                                  onDragEnd={handleDragEnd}
                                   onDragOver={(e) => handleDragOver(e, conv.id)}
-                                  onDrop={(e) => handleDropOnFolderChat(e, conv.id, folder.id)}
+                                  onDrop={(e) =>
+                                    handleDropOnFolderChat(e, conv.id, folder.id)
+                                  }
                                 >
+                                  {/* 버튼 자체를 드래그 가능 */}
                                   <button
                                     className={
-                                      "sidebar-folder-chat" + (conv.id === currentId ? " active" : "")
+                                      "sidebar-folder-chat" +
+                                      (conv.id === currentId ? " active" : "")
                                     }
-                                    onClick={() => handleSelectConversation(conv.id)}
+                                    onClick={() => {
+                                      setFocusArea("chat");
+                                      handleSelectConversation(conv.id);
+                                    }}
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, conv.id)}
+                                    onDragEnd={handleDragEnd}
                                   >
                                     {conv.title}
                                   </button>
@@ -1380,15 +1385,22 @@ function ChatPage() {
                                       const rect = e.currentTarget.getBoundingClientRect();
                                       const menuWidth = 160;
                                       const viewportWidth =
-                                        window.innerWidth || document.documentElement.clientWidth;
-                                      const x = Math.min(rect.right, viewportWidth - menuWidth - 8);
+                                        window.innerWidth ||
+                                        document.documentElement.clientWidth;
+                                      const x = Math.min(
+                                        rect.right,
+                                        viewportWidth - menuWidth - 8
+                                      );
                                       const y = rect.bottom + 4;
                                       setMenuPosition({ x, y });
                                       setMenuInFolder(true);
-                                      setFolderMenuOpenId(null); // 폴더 더보기 닫기
-                                      setMenuOpenId((prev) => (prev === conv.id ? null : conv.id));
+                                      setFolderMenuOpenId(null);
                                       setFocusArea("chat");
+                                      setMenuOpenId((prev) =>
+                                        prev === conv.id ? null : conv.id
+                                      );
                                     }}
+                                    aria-label="채팅 더보기"
                                   >
                                     ⋯
                                   </button>
@@ -1408,27 +1420,25 @@ function ChatPage() {
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
                     e.preventDefault();
-                    const convId = draggingId || e.dataTransfer.getData("text/plain");
+                    const convId = draggingId || getDraggedChatId(e);
                     if (!convId) return;
                     setPendingFolderConvId(convId);
                     setFolderCreateModalOpen(true);
-                    setFocusArea("folder");
                   }}
                 >
                   + 새 폴더
                 </button>
               </div>
 
-              {/* ================== 채팅 섹션 ================== */}
+              {/* ================== 채팅(루트) 섹션 ================== */}
               <div
                 className="sidebar-chat-section"
+                onDragOver={handleRootListDragOver}
+                onDrop={handleRootListDrop}
                 onMouseDown={() => {
                   setFocusArea("chat");
                   setSelectedFolderId(null);
                 }}
-                onDragEnter={() => setFocusArea("chat")} // 드래그로 들어오면 채팅 포커스
-                onDragOver={handleRootListDragOver}
-                onDrop={handleRootListDrop}
               >
                 <div className="sidebar-section-title">채팅</div>
 
@@ -1437,10 +1447,8 @@ function ChatPage() {
                     "sidebar-chat-list" +
                     (rootConversations.length > 20 ? " sidebar-chat-list-limit" : "")
                   }
-                  onDragOver={(e) => {
-                    handleRootListDragOver(e);
-                    autoScrollWhileDragging(e, { edge: 22, step: 12 });
-                  }}
+                  ref={rootListRef}
+                  onDragOver={handleRootListDragOver}
                   onDrop={handleRootListDrop}
                   onMouseDown={() => {
                     setFocusArea("chat");
@@ -1494,11 +1502,12 @@ function ChatPage() {
                             const y = rect.bottom + 4;
                             setMenuPosition({ x, y });
                             setMenuInFolder(false);
-                            setFolderMenuOpenId(null); // 폴더 더보기 닫기
+                            setFolderMenuOpenId(null);
                             setSelectedFolderId(null);
                             setFocusArea("chat");
                             setMenuOpenId((prev) => (prev === conv.id ? null : conv.id));
                           }}
+                          aria-label="채팅 더보기"
                         >
                           ⋯
                         </button>
@@ -1512,7 +1521,10 @@ function ChatPage() {
 
           {/* 사이드바 리사이즈 핸들 */}
           {!sidebarCollapsed && (
-            <div className="sidebar-resize-handle" onMouseDown={handleSidebarResizeMouseDown} />
+            <div
+              className="sidebar-resize-handle"
+              onMouseDown={handleSidebarResizeMouseDown}
+            />
           )}
         </aside>
 
@@ -1537,7 +1549,7 @@ function ChatPage() {
                 {messages.map((m, idx) => {
                   const isBot = m.role === "bot";
                   const align = isBot ? "flex-start" : "flex-end";
-                  const bubbleBg = isBot ? "#e6f4ff" : "#fee500"; // 하늘색 / 노랑색
+                  const bubbleBg = isBot ? "#e6f4ff" : "#fee500";
 
                   return (
                     <div
@@ -1548,7 +1560,6 @@ function ChatPage() {
                         margin: "14px 0",
                       }}
                     >
-                      {/* 대화 카드(테두리는 배경색과 동일) */}
                       <div
                         style={{
                           border: "1px solid var(--page-bg, #ffffff)",
@@ -1558,7 +1569,6 @@ function ChatPage() {
                           background: "var(--page-bg, #ffffff)",
                         }}
                       >
-                        {/* 말풍선 */}
                         <div
                           style={{
                             background: bubbleBg,
@@ -1632,7 +1642,9 @@ function ChatPage() {
                 <input
                   className="chat-input"
                   type="text"
-                  placeholder={loading ? "응답을 기다리는 중입니다..." : "메시지를 입력하세요..."}
+                  placeholder={
+                    loading ? "응답을 기다리는 중입니다..." : "메시지를 입력하세요..."
+                  }
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleInputKeyDown}
@@ -1642,7 +1654,12 @@ function ChatPage() {
                     setSelectedFolderId(null);
                   }}
                 />
-                <button className="chat-send-btn" onClick={sendMessage} disabled={loading}>
+                <button
+                  className="chat-send-btn"
+                  onClick={sendMessage}
+                  disabled={loading}
+                  aria-label="메시지 전송"
+                >
                   <img src="/img/trans_message.png" alt="전송" className="send-icon" />
                 </button>
               </div>
@@ -1723,10 +1740,12 @@ function ChatPage() {
         <div
           className="error-modal-overlay"
           onClick={(e) => {
-            if (e.target.classList.contains("error-modal-overlay")) setConfirmDelete(null);
+            if (e.target.classList.contains("error-modal-overlay")) {
+              setConfirmDelete(null);
+            }
           }}
         >
-          <div className="error-modal">
+          <div className="error-modal" role="dialog" aria-modal="true">
             <div className="error-modal-header">
               <span className="error-modal-title">대화 삭제</span>
             </div>
@@ -1759,10 +1778,12 @@ function ChatPage() {
         <div
           className="error-modal-overlay"
           onClick={(e) => {
-            if (e.target.classList.contains("error-modal-overlay")) setConfirmFolderDelete(null);
+            if (e.target.classList.contains("error-modal-overlay")) {
+              setConfirmFolderDelete(null);
+            }
           }}
         >
-          <div className="error-modal">
+          <div className="error-modal" role="dialog" aria-modal="true">
             <div className="error-modal-header">
               <span className="error-modal-title">폴더 삭제</span>
             </div>
@@ -1793,7 +1814,7 @@ function ChatPage() {
       {/* ===== 새 폴더 생성 모달 ===== */}
       {folderCreateModalOpen && (
         <div className="error-modal-overlay">
-          <div className="error-modal">
+          <div className="error-modal" role="dialog" aria-modal="true">
             <div className="error-modal-header">
               <span className="error-modal-title">새 폴더 만들기</span>
             </div>
@@ -1842,7 +1863,7 @@ function ChatPage() {
       {/* ===== 폴더 이름 변경 모달 ===== */}
       {folderRenameInfo && (
         <div className="error-modal-overlay">
-          <div className="error-modal">
+          <div className="error-modal" role="dialog" aria-modal="true">
             <div className="error-modal-header">
               <span className="error-modal-title">폴더 이름 변경</span>
             </div>
@@ -1852,10 +1873,7 @@ function ChatPage() {
                 type="text"
                 value={folderRenameInfo.value}
                 onChange={(e) =>
-                  setFolderRenameInfo((prev) => ({
-                    ...prev,
-                    value: e.target.value,
-                  }))
+                  setFolderRenameInfo((prev) => ({ ...prev, value: e.target.value }))
                 }
                 style={{
                   width: "100%",
@@ -1883,7 +1901,7 @@ function ChatPage() {
       {/* ===== 대화 이름 변경 모달 ===== */}
       {renameInfo && (
         <div className="error-modal-overlay">
-          <div className="error-modal">
+          <div className="error-modal" role="dialog" aria-modal="true">
             <div className="error-modal-header">
               <span className="error-modal-title">대화 이름 변경</span>
             </div>
@@ -1893,10 +1911,7 @@ function ChatPage() {
                 type="text"
                 value={renameInfo.value}
                 onChange={(e) =>
-                  setRenameInfo((prev) => ({
-                    ...prev,
-                    value: e.target.value,
-                  }))
+                  setRenameInfo((prev) => ({ ...prev, value: e.target.value }))
                 }
                 style={{
                   width: "100%",
@@ -1932,13 +1947,19 @@ function ChatPage() {
         <div
           className="error-modal-overlay"
           onClick={(e) => {
-            if (e.target.classList.contains("error-modal-overlay")) setErrorInfo(null);
+            if (e.target.classList.contains("error-modal-overlay")) {
+              setErrorInfo(null);
+            }
           }}
         >
-          <div className="error-modal">
+          <div className="error-modal" role="dialog" aria-modal="true">
             <div className="error-modal-header">
               <span className="error-modal-title">{errorInfo.title}</span>
-              <button className="error-modal-close" onClick={() => setErrorInfo(null)}>
+              <button
+                className="error-modal-close"
+                onClick={() => setErrorInfo(null)}
+                aria-label="오류창 닫기"
+              >
                 ✕
               </button>
             </div>
@@ -1961,6 +1982,9 @@ function ChatPage() {
   );
 }
 
+// ---------------------------------------------------------
+// 라우터
+// ---------------------------------------------------------
 function App() {
   return (
     <BrowserRouter>
