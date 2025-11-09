@@ -505,23 +505,31 @@ body {
   }
 }
 
-/* 채팅 메시지 영역 (내부 스크롤) */
+/* 채팅 메시지 영역: 내부 스크롤 표시 */
 .chat-messages {
   flex: 1;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
   overflow-y: auto;
-  padding-right: 0.3rem;
-
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  -ms-overflow-style: auto;   /* IE/Edge */
+  scrollbar-width: thin;      /* Firefox */
 }
+
+/* Chrome/Safari(webkit) 커스텀 */
 .chat-messages::-webkit-scrollbar {
-  display: none;
+  width: 10px;
 }
-
+.chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-messages::-webkit-scrollbar-thumb {
+  background: #cfd5df;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: #b7bfcc;
+}
 /* 말풍선 */
 .message {
   max-width: 80%;
@@ -985,3 +993,187 @@ body {
 .sidebar-folder-chat-row .sidebar-chat-more {
   flex-shrink: 0;
 }
+
+
+/* === 채팅 내부 스크롤 UX 보강 === */
+.chat-container {
+  position: relative; /* 스크롤 컨트롤 고정용 */
+}
+
+.chat-messages {
+  overscroll-behavior: contain; /* 바디로 스크롤 전파 방지 */
+  outline: none;                /* 포커스 스타일 직접 제어 */
+}
+
+/* 채팅 내부 부동(浮動) 스크롤 버튼 묶음 */
+.chat-scroll-controls {
+  position: absolute;
+  right: 8px;
+  bottom: 84px; /* 입력창과 겹치지 않게 */
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 5;
+  pointer-events: none; /* 컨테이너 밖 클릭 통과 */
+}
+
+.chat-scroll-controls .chat-scroll-btn {
+  pointer-events: auto; /* 버튼만 클릭 가능 */
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,.12);
+  transition: transform .12s ease-out, box-shadow .12s ease-out, background .12s ease-out;
+}
+
+.chat-scroll-controls .chat-scroll-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0,0,0,.18);
+  background: #f9fafb;
+}
+
+.chat-scroll-controls .chat-scroll-btn:active {
+  transform: translateY(0);
+}
+
+/* 키보드 포커스 시 가시성 */
+.chat-messages:focus-visible {
+  box-shadow: inset 0 0 0 2px rgba(58,122,254,.25);
+  border-radius: 8px;
+}
+
+
+/* ========== [추가] 채팅창 내부 스크롤 표시 & 스타일 ========== */
+.chat-container .chat-messages{
+  overflow-y: auto;
+  -ms-overflow-style: auto;     /* IE/Edge */
+  scrollbar-width: thin;        /* Firefox */
+  position: relative;           /* 그림자 오버레이 기준 */
+}
+
+/* WebKit (Chrome/Safari) 스크롤바 커스텀 */
+.chat-container .chat-messages::-webkit-scrollbar{
+  width: 10px;
+  display: block;               /* 이전의 display:none 무력화 */
+}
+.chat-container .chat-messages::-webkit-scrollbar-track{
+  background: transparent;
+}
+.chat-container .chat-messages::-webkit-scrollbar-thumb{
+  background: #cfd5df;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.chat-container .chat-messages::-webkit-scrollbar-thumb:hover{
+  background: #b7bfcc;
+}
+
+/* 스크롤 가능 시 상/하단 페이드 (JS가 클래스를 토글함) */
+.chat-container .chat-messages.scroll-shadow-top::before,
+.chat-container .chat-messages.scroll-shadow-bottom::after{
+  content: "";
+  position: sticky;
+  left: 0; right: 0;
+  height: 14px;
+  z-index: 1;
+  display: block;
+}
+.chat-container .chat-messages.scroll-shadow-top::before{
+  top: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.06), transparent);
+}
+.chat-container .chat-messages.scroll-shadow-bottom::after{
+  bottom: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.06), transparent);
+}
+
+/* ========== [추가] AI/사용자 구분 시각 강화(라벨·꼬리) ========== */
+.message{
+  position: relative;
+}
+.message.bot{
+  border-radius: 0.9rem 0.9rem 0.9rem 0.4rem;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+.message.user{
+  border-radius: 0.9rem 0.9rem 0.4rem 0.9rem;
+  background: #3a7afe;
+  color: #fff;
+}
+
+/* 말풍선 라벨 (마크업 수정 없이 pseudo 요소로) */
+.message.bot::after,
+.message.user::after{
+  position: absolute;
+  top: -18px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 999px;
+  line-height: 1;
+  opacity: .85;
+}
+.message.bot::after{
+  content: "AI";
+  left: 8px;
+  color: #0f172a;
+  background: #e5e7eb;
+  border: 1px solid #cbd5e1;
+}
+.message.user::after{
+  content: "나";
+  right: 8px;
+  color: #fff;
+  background: #1d4ed8;
+}
+
+/* ========== [추가] 스크롤 컨트롤 버튼 오버레이 ========== */
+.chat-scroll-ctrls{
+  position: absolute;
+  right: 8px;
+  bottom: 74px;                 /* 입력창 위로 살짝 */
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 5;
+  pointer-events: none;         /* 기본은 통과 */
+}
+.chat-scroll-ctrls .scroll-btn{
+  pointer-events: auto;         /* 버튼만 클릭 가능 */
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  box-shadow: 0 6px 16px rgba(0,0,0,.12);
+  cursor: pointer;
+  font-size: 16px;
+  display: grid;
+  place-items: center;
+}
+.chat-scroll-ctrls .scroll-btn:hover{
+  background: #f3f4f6;
+}
+.chat-scroll-ctrls .scroll-btn.pulse{
+  animation: pulseGlow 1.3s infinite ease-in-out;
+}
+@keyframes pulseGlow{
+  0%{ box-shadow: 0 0 0 0 rgba(58,122,254,.35); }
+  70%{ box-shadow: 0 0 0 10px rgba(58,122,254,0); }
+  100%{ box-shadow: 0 0 0 0 rgba(58,122,254,0); }
+}
+
+/* 컨테이너를 오버레이 기준으로 */
+.chat-container{ position: relative; }
+
+/* 부모들도 내부 스크롤 잘 동작하도록 (flex 자식 높이 계산) */
+.chat-layout, .chat-shell, .chat-main{ min-height: 0; }
