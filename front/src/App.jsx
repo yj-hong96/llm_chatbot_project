@@ -83,16 +83,19 @@ function HomePage() {
         </div>
       </header>
 
-      <main className="home-main">
-        <div className="hero-image">
-          <img className="hero-bg" src="/img/homepage.jpg" alt="홈 배경" />
-        </div>
-        <button
-          className="start-chat-btn"
-          onClick={() => navigate("/chat", { state: { newChat: true } })}
-        >
+          <main className="home-main">
+            <div className="home-main-inner">
+              <div className="hero-image">
+                <img className="hero-bg" src="/img/homepage.jpg" alt="홈 배경" />
+              </div>
+
+              <button
+                className="start-chat-btn"
+                onClick={() => navigate("/chat", { state: { newChat: true } })}
+              >
           채팅 시작 하기
-        </button>
+          </button>
+        </div>
       </main>
     </div>
   );
@@ -637,7 +640,7 @@ function ChatPage() {
     startedFromHomeRef.current = true;
 
     handleNewChat();
-    navigate("/chat", { replace: true });   // state 비우면서 교체
+    navigate("/chat", { replace: true }); // state 비우면서 교체
   }, [location?.state?.newChat, navigate]);
 
   // ----------------------------- 대화 선택/삭제/이름변경
@@ -793,9 +796,9 @@ function ChatPage() {
   const handleFolderDragOver = (e, folderId) => {
     e.preventDefault();
     if (folderDraggingId) {
-      setFolderDragOverId(folderId);      // 폴더 순서 변경 하이라이트
+      setFolderDragOverId(folderId); // 폴더 순서 변경 하이라이트
     } else {
-      setDragOverFolderId(folderId);      // 채팅 → 폴더 이동 하이라이트
+      setDragOverFolderId(folderId); // 채팅 → 폴더 이동 하이라이트
     }
 
     const el = folderChatsRefs.current[folderId];
@@ -1276,7 +1279,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                           (folderDraggingId === folder.id ? " dragging" : "") +
                           (isDragOverFolderSort ? " drag-over" : "") +
                           (isDropChat ? " drop-chat" : "") +
-                          (collapsed ? " collapsed" : "")
+                          (collapsed ? " collapsed" : "") // ✅ [추가]: .collapsed 클래스
                         }
                         draggable
                         onDragStart={(e) => handleFolderItemDragStart(e, folder.id)}
@@ -1287,7 +1290,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                         aria-label={`폴더 ${folder.name}`}
                       >
                         <div
-                          className="sidebar-folder-header"
+                          className="sidebar-folder-header" // ✅ [수정]: style 속성 제거
                           onMouseDown={(e) => {
                             e.stopPropagation();
                             setFocusArea("folder");
@@ -1302,9 +1305,8 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                             setDragOverFolderId(folder.id);
                           }}
                           onDrop={(e) => handleDropChatOnFolderHeader(e, folder.id)}
-                          style={{ display: "flex", alignItems: "center", gap: 6 }}
                         >
-                          {/* ✅ 추가: 이름 '왼쪽' 토글 버튼 (+ / −) */}
+                          {/* ✅ [수정]: 이름 '왼쪽' 토글 버튼 (+ / −) / style -> className */}
                           <button
                             title={collapsed ? "대화 펼치기" : "대화 접기"}
                             aria-label={collapsed ? "대화 펼치기" : "대화 접기"}
@@ -1312,27 +1314,15 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                               e.stopPropagation();
                               toggleFolder(folder.id);
                             }}
-                            style={{
-                              width: 22,
-                              height: 22,
-                              lineHeight: "22px",
-                              borderRadius: 6,
-                              border: "1px solid #d1d5db",
-                              background: "#ffffff",
-                              fontSize: 14,
-                              cursor: "pointer",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              userSelect: "none",
-                            }}
+                            className="sidebar-folder-toggle" // ✅ [수정]: style -> className
                           >
                             {collapsed ? "+" : "−"}
                           </button>
 
                           <span className="sidebar-folder-name">{folder.name}</span>
 
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
+                          {/* ✅ [수정]: 컨트롤(개수, 더보기) 래퍼 / style -> className */}
+                          <div className="sidebar-folder-controls">
                             {childConvs.length > 0 && (
                               <span className="sidebar-folder-count">{childConvs.length}</span>
                             )}
@@ -1367,7 +1357,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                               "sidebar-folder-empty-drop" +
                               (dragOverFolderId === folder.id ? " drop-chat" : "")
                             }
-                            style={collapsed ? { display: "none" } : undefined}
+                            // ✅ [수정]: style 속성 제거 (CSS에서 .collapsed로 처리)
                             onDragOver={(e) => {
                               e.preventDefault();
                               setDragOverFolderId(folder.id);
@@ -1384,7 +1374,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                             ref={(el) => {
                               folderChatsRefs.current[folder.id] = el;
                             }}
-                            style={collapsed ? { display: "none" } : undefined}
+                            // ✅ [수정]: style 속성 제거 (CSS에서 .collapsed로 처리)
                             onDragOver={(e) => handleFolderChatsDragOver(e, folder.id)}
                           >
                             {childConvs.map((conv) => {
@@ -1589,6 +1579,8 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
             <div className="chat-container">
               {/* ====== 대화 말풍선 영역 ====== */}
               <div className="chat-messages">
+                
+                {/* ✅ [수정]: 채팅 말풍선 인라인 스타일 원본 유지 */}
                 {messages.map((m, idx) => {
                   const isBot = m.role === "bot";
                   const align = isBot ? "flex-start" : "flex-end";
@@ -1632,7 +1624,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                   );
                 })}
 
-                {/* 로딩 중 말풍선 (AI 스타일) */}
+                {/* ✅ [수정]: 로딩 말풍선 인라인 스타일 원본 유지 */}
                 {loading && (
                   <div
                     style={{
@@ -1873,15 +1865,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                     handleCreateFolderConfirm();
                   }
                 }}
-                style={{
-                  width: "100%",
-                  marginTop: "0.5rem",
-                  padding: "0.45rem 0.6rem",
-                  borderRadius: "0.5rem",
-                  border: "1px solid #d1d5db",
-                  fontSize: "0.85rem",
-                  outline: "none",
-                }}
+                className="modal-input" // ✅ [수정]: style -> className
               />
             </div>
             <div className="error-modal-footer">
@@ -1918,15 +1902,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                 onChange={(e) =>
                   setFolderRenameInfo((prev) => ({ ...prev, value: e.target.value }))
                 }
-                style={{
-                  width: "100%",
-                  marginTop: "0.5rem",
-                  padding: "0.45rem 0.6rem",
-                  borderRadius: "0.5rem",
-                  border: "1px solid #d1d5db",
-                  fontSize: "0.85rem",
-                  outline: "none",
-                }}
+                className="modal-input" // ✅ [수정]: style -> className
               />
             </div>
             <div className="error-modal-footer">
@@ -1956,15 +1932,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                 onChange={(e) =>
                   setRenameInfo((prev) => ({ ...prev, value: e.target.value }))
                 }
-                style={{
-                  width: "100%",
-                  marginTop: "0.5rem",
-                  padding: "0.45rem 0.6rem",
-                  borderRadius: "0.5rem",
-                  border: "1px solid #d1d5db",
-                  fontSize: "0.85rem",
-                  outline: "none",
-                }}
+                className="modal-input" // ✅ [수정]: style -> className
               />
             </div>
             <div className="error-modal-footer">
