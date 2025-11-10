@@ -371,6 +371,18 @@ function getDraggedFolderId(e) {
 function ChatPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [foldersCollapsed, setFoldersCollapsed] = useState(false);
+
+  // ✅ 추가: 폴더별 접힘 상태(토글 버튼에 사용)
+  const [collapsedFolderIds, setCollapsedFolderIds] = useState(() => new Set());
+  const isFolderCollapsed = (id) => collapsedFolderIds.has(id);
+  const toggleFolder = (id) =>
+    setCollapsedFolderIds((prev) => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id);
+      else s.add(id);
+      return s;
+    });
 
   // ----------------------------- 데이터/선택/모달/드래그/사이드바 상태
   const [chatState, setChatState] = useState(getInitialChatState);
@@ -616,17 +628,17 @@ function ChatPage() {
     setFocusArea("chat");
   };
 
-const startedFromHomeRef = useRef(false);
+  const startedFromHomeRef = useRef(false);
 
-// 홈 → 채팅 시작 하기 (StrictMode에서도 1회만 동작)
-useEffect(() => {
-  if (!location?.state?.newChat) return;
-  if (startedFromHomeRef.current) return; // 두 번 실행 방지
-  startedFromHomeRef.current = true;
+  // 홈 → 채팅 시작 하기 (StrictMode에서도 1회만 동작)
+  useEffect(() => {
+    if (!location?.state?.newChat) return;
+    if (startedFromHomeRef.current) return; // 두 번 실행 방지
+    startedFromHomeRef.current = true;
 
-  handleNewChat();
-  navigate("/chat", { replace: true });   // state 비우면서 교체
-}, [location?.state?.newChat, navigate]);
+    handleNewChat();
+    navigate("/chat", { replace: true });   // state 비우면서 교체
+  }, [location?.state?.newChat, navigate]);
 
   // ----------------------------- 대화 선택/삭제/이름변경
   const handleSelectConversation = (id) => {
@@ -1253,6 +1265,8 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                     const isDragOverFolderSort =
                       folderDragOverId === folder.id && !!folderDraggingId;
 
+                    const collapsed = isFolderCollapsed(folder.id);
+
                     return (
                       <div
                         key={folder.id}
@@ -1261,7 +1275,8 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                           (selectedFolderId === folder.id ? " selected" : "") +
                           (folderDraggingId === folder.id ? " dragging" : "") +
                           (isDragOverFolderSort ? " drag-over" : "") +
-                          (isDropChat ? " drop-chat" : "")
+                          (isDropChat ? " drop-chat" : "") +
+                          (collapsed ? " collapsed" : "")
                         }
                         draggable
                         onDragStart={(e) => handleFolderItemDragStart(e, folder.id)}
@@ -1281,19 +1296,45 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                             e.stopPropagation();
                             setSelectedFolderId(folder.id);
                           }}
-                          // ✅ 폴더 헤더가 '대화 드롭 타깃'이 되도록 처리
+                          // 폴더 헤더가 '대화 드롭 타깃'이 되도록 처리
                           onDragOver={(e) => {
                             e.preventDefault();
                             setDragOverFolderId(folder.id);
                           }}
                           onDrop={(e) => handleDropChatOnFolderHeader(e, folder.id)}
+                          style={{ display: "flex", alignItems: "center", gap: 6 }}
                         >
+                          {/* ✅ 추가: 이름 '왼쪽' 토글 버튼 (+ / −) */}
+                          <button
+                            title={collapsed ? "대화 펼치기" : "대화 접기"}
+                            aria-label={collapsed ? "대화 펼치기" : "대화 접기"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFolder(folder.id);
+                            }}
+                            style={{
+                              width: 22,
+                              height: 22,
+                              lineHeight: "22px",
+                              borderRadius: 6,
+                              border: "1px solid #d1d5db",
+                              background: "#ffffff",
+                              fontSize: 14,
+                              cursor: "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              userSelect: "none",
+                            }}
+                          >
+                            {collapsed ? "+" : "−"}
+                          </button>
+
                           <span className="sidebar-folder-name">{folder.name}</span>
-                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
                             {childConvs.length > 0 && (
-                              <span className="sidebar-folder-count">
-                                {childConvs.length}
-                              </span>
+                              <span className="sidebar-folder-count">{childConvs.length}</span>
                             )}
                             <button
                               className="sidebar-chat-more"
@@ -1319,13 +1360,14 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                           </div>
                         </div>
 
-                        {/* 폴더가 비어있어도 드롭 가능 */}
+                        {/* 폴더가 비어있어도 드롭 가능 (접힘이면 숨김) */}
                         {childConvs.length === 0 && (
                           <div
                             className={
                               "sidebar-folder-empty-drop" +
                               (dragOverFolderId === folder.id ? " drop-chat" : "")
                             }
+                            style={collapsed ? { display: "none" } : undefined}
                             onDragOver={(e) => {
                               e.preventDefault();
                               setDragOverFolderId(folder.id);
@@ -1342,6 +1384,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                             ref={(el) => {
                               folderChatsRefs.current[folder.id] = el;
                             }}
+                            style={collapsed ? { display: "none" } : undefined}
                             onDragOver={(e) => handleFolderChatsDragOver(e, folder.id)}
                           >
                             {childConvs.map((conv) => {

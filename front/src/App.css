@@ -1,6 +1,6 @@
 /* =========================================================
-   [공통] 리셋 + 기본 설정
-   ========================================================= */
+  [공통] 리셋 + 기본 설정
+  ========================================================= */
 
 * {
   margin: 0;
@@ -19,8 +19,8 @@ body {
     'Apple SD Gothic Neo', sans-serif;
   background-color: #ffffff;
   color: #111111;
-  overflow-x: hidden;  /* 가로 스크롤만 막기 */
-  overflow-y: hidden;  /* 전체 크롬 스크롤 없음 */
+  overflow-x: hidden; /* 가로 스크롤만 막기 */
+  overflow-y: hidden; /* 전체 크롬 스크롤 없음 */
 }
 
 /* 모든 페이지 공통 래퍼 */
@@ -65,8 +65,8 @@ body {
 }
 
 /* =========================================================
-   [홈 페이지] 메인 화면 (챗봇 제목 + 이미지 + 버튼)
-   ========================================================= */
+  [홈 페이지] 메인 화면
+  ========================================================= */
 
 .home-page {
   min-height: 100vh;
@@ -85,13 +85,13 @@ body {
 
   padding-top: 4vh;
   padding-bottom: 6vh;
-  padding-left: 12vw;
+  padding-left: 25vw;
   padding-right: 6vw;
   gap: 3vh;
 }
 
 .hero-image {
-  width: 60vw;
+  width: 48vw;
   margin: 0 auto;
   aspect-ratio: 4 / 3;
   overflow: hidden;
@@ -138,7 +138,7 @@ body {
   }
 
   .hero-image {
-    width: 90vw;
+    width: 80vw;
   }
 
   .start-chat-btn {
@@ -147,8 +147,8 @@ body {
 }
 
 /* =========================================================
-   [채팅 페이지] 전체 레이아웃 + 사이드바
-   ========================================================= */
+  [채팅 페이지] 전체 레이아웃
+  ========================================================= */
 
 /* 채팅 페이지 전체 */
 .chat-page {
@@ -159,9 +159,7 @@ body {
   overflow: hidden; /* 전체 스크롤 제거 */
 }
 
-/* 채팅 레이아웃 (사이드바 + 우측 채팅창)
-   - 창 기준 90% 영역 사용
-   - 왼쪽 여백 없이 화면 왼쪽에 붙도록 margin 조정 */
+/* 채팅 레이아웃 (사이드바 + 우측 채팅창) */
 .chat-layout {
   flex: 1;
   display: flex;
@@ -170,12 +168,14 @@ body {
   max-width: 90vw;
   max-height: 92vh;
   min-width: 5vw;
-  min-height: 5vh;
+  min-height: 0; /* min-height 추가됨 */
   margin: auto auto auto 0; /* 위/아래는 가운데, 좌측 0으로 붙이기 */
   box-sizing: border-box;
 }
 
-/* ===== 좌측 사이드바 ===== */
+/* =========================================================
+  [채팅 페이지] 좌측 사이드바 (공통)
+  ========================================================= */
 
 .chat-sidebar {
   position: relative;
@@ -231,7 +231,6 @@ body {
     box-shadow 0.15s ease-out;
 }
 
-/* 햄버거 메뉴 토글 버튼 (새 채팅 옆) */
 .sidebar-menu-toggle {
   flex: 0 0 auto;
   width: 40px;
@@ -258,21 +257,295 @@ body {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
 }
 
+/* 리사이즈 핸들 */
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+}
+
+/* =========================================================
+  [채팅 페이지] 좌측 사이드바 - 섹션 제목 (공통)
+  ========================================================= */
+
 .sidebar-section-title {
   font-size: 0.75rem;
   color: #6b7280;
   padding: 4px 2px 2px;
   transition: color 0.15s ease-out;
+  position: relative;
+  padding-right: 22px; /* 아이콘 들어갈 공간 */
 }
 
-/* 채팅 섹션을 아래로 내리기 위한 래퍼 */
+/* 폴더 섹션 제목 오른쪽에 folder.png */
+.sidebar-section-title:has(+ .sidebar-folder-list)::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  background: url("/img/folder.png") no-repeat center / contain;
+  opacity: 0.95;
+  pointer-events: none;
+}
+
+/* 채팅 섹션 제목 오른쪽에 message.png */
+.sidebar-chat-section .sidebar-section-title::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  background: url("/img/message.png") no-repeat center / contain;
+  opacity: 0.95;
+  pointer-events: none;
+}
+
+/* --- 섹션 제목 라벨링 --- */
+
+/* 첫 번째 섹션 타이틀(폴더 섹션) → '폴더 구역(폴더)' */
+.chat-sidebar > .sidebar-section-title:first-of-type {
+  font-size: 0; /* 기존 텍스트(폴더) 숨기기 */
+  position: relative;
+}
+
+.chat-sidebar > .sidebar-section-title:first-of-type::before {
+  content: "폴더 구역(폴더)";
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+/* 채팅 섹션 타이틀 → '채팅 구역(채팅)' */
+.sidebar-chat-section .sidebar-section-title {
+  font-size: 0; /* 기존 텍스트(채팅) 숨기기 */
+  position: relative;
+}
+
+.sidebar-chat-section .sidebar-section-title::before {
+  content: "채팅 구역(채팅)";
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+/* =========================================================
+  [채팅 페이지] 좌측 사이드바 - 폴더 구역
+  ========================================================= */
+
+.sidebar-folder-title {
+  margin-top: 8px;
+}
+
+.sidebar-folder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+  border: 1px solid #e5e7eb; /* 폴더 구역 테두리 */
+  border-radius: 0.6rem;
+  padding: 4px 4px 6px;
+  background: #fafafa;
+}
+
+/* 폴더가 없을 때 */
+.sidebar-folder-empty {
+  font-size: 0; /* 기존 텍스트 숨기고 */
+  color: #9ca3af; /* 원본 스타일 유지 */
+  padding: 4px 2px; /* 원본 스타일 유지 */
+  position: relative;
+}
+
+.sidebar-folder-empty::before {
+  content: "폴더(사용자가 만든 폴더)가 없습니다.";
+  font-size: 0.78rem;
+  color: #9ca3af;
+}
+
+/* --- 개별 폴더 아이템 --- */
+.sidebar-folder-item {
+  position: relative;
+  padding: 4px 6px;
+  border-radius: 0.5rem;
+  background: #ffffff; /* ★ 폴더 배경: 흰색 */
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  transition: background 0.16s ease-out, border-color 0.16s ease-out,
+    transform 0.16s ease-out, box-shadow 0.16s ease-out, opacity 0.16s ease-out;
+}
+
+.sidebar-folder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sidebar-folder-name {
+  font-size: 0.8rem;
+  color: #111827; /* 흰 배경에 어두운 글자 */
+}
+
+.sidebar-folder-count {
+  font-size: 0.7rem;
+  color: #6b7280;
+}
+
+/* --- 폴더 상태: 선택, 드래그 --- */
+
+/* 폴더 선택 시 */
+.sidebar-folder-item.selected {
+  border-color: #d92c2c; /* ★ 레드 농도 더 진하게 */
+  box-shadow: 0 0 0 2px rgba(217, 44, 44, 0.85);
+  background: #fff5f5;
+  transform: translateY(-1px);
+}
+
+/* 폴더 드래그 모션 */
+.sidebar-folder-item.dragging {
+  opacity: 0.7;
+  transform: scale(0.98);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* 폴더 위로 드래그 */
+.sidebar-folder-item.drag-over {
+  border-color: #f97373; /* 연한 레드 테두리 */
+  background: #fff5f5; /* 옅은 레드 배경 */
+}
+
+/* 폴더 헤더/빈 폴더에 '대화' 드롭 시 */
+.sidebar-folder-item.drop-chat .sidebar-folder-header {
+  box-shadow: 0 0 0 2px #6366f1 inset;
+  background: #eef2ff;
+  border-radius: .4rem;
+}
+
+/* 빈 폴더 드롭존 */
+.sidebar-folder-empty-drop {
+  margin-top: 6px;
+  padding: 6px 8px;
+  font-size: .75rem;
+  color: #9ca3af;
+  background: #fafafa;
+  border: 1px dashed #d1d5db;
+  border-radius: .45rem;
+}
+.sidebar-folder-item.drop-chat .sidebar-folder-empty-drop,
+.sidebar-folder-empty-drop.drop-chat {
+  border-color: #6366f1;
+  background: #eef2ff;
+}
+
+/* --- 폴더 내부 채팅 리스트 --- */
+
+.sidebar-folder-chats {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* 들여쓰기 + 점선 */
+  padding-left: 10px;
+  border-left: 1px dashed #e5e7eb;
+}
+
+/* 폴더 안 채팅 목록 라벨 */
+.sidebar-folder-chats::before {
+  content: "대화 기록(채팅 기록)";
+  display: block;
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin: 2px 2px 4px;
+}
+
+/* 폴더 안 개별 채팅 행 */
+.sidebar-folder-chat-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+  border-radius: 0.45rem;
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out,
+    background 0.12s ease-out, opacity 0.12s ease-out;
+  overflow: hidden; /* 더보기 버튼 고정용 */
+}
+
+.sidebar-folder-chat {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: #111827;
+  font-size: 0.78rem;
+  padding: 2px 4px;
+  border-radius: 0.4rem;
+  cursor: pointer;
+  transition: background 0.14s ease-out, transform 0.14s ease-out,
+    box-shadow 0.14s ease-out, color 0.14s ease-out;
+  min-width: 0; /* 더보기 버튼 고정용 */
+}
+
+.sidebar-folder-chat:hover {
+  background: #f3f4f6;
+  transform: translateX(1px);
+}
+
+/* 폴더 안 채팅 선택 시 */
+.sidebar-folder-chat.active {
+  background: #eef3ff;
+  outline: 2px solid #3a7afe;
+  outline-offset: 2px;
+}
+
+/* 폴더 안 채팅 드래그 */
+.sidebar-folder-chat-row.dragging {
+  opacity: 0.7;
+  transform: scale(0.98);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+}
+
+.sidebar-folder-chat-row.drag-over {
+  background: #e5e7eb;
+  box-shadow: 0 0 0 1px #6366f1;
+}
+
+/* '새 폴더' 버튼 */
+.sidebar-new-folder-btn {
+  margin-top: 4px;
+  width: 100%;
+  border-radius: 999px;
+  border: 1px dashed #4a4b51;
+  background: transparent;
+  color: #6b7280;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.14s ease-out, background 0.14s ease-out,
+    color 0.14s ease-out;
+}
+
+.sidebar-new-folder-btn:hover {
+  border-style: solid;
+  color: #111827;
+}
+
+/* =========================================================
+  [채팅 페이지] 좌측 사이드바 - 채팅 구역
+  ========================================================= */
+
 .sidebar-chat-section {
   margin-top: 10px;
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border: 1px solid #e5e7eb;      /* 채팅 구역 테두리 */
+  border: 1px solid #e5e7eb; /* 채팅 구역 테두리 */
   border-radius: 0.6rem;
   padding: 4px 4px 6px;
   background: #fafafa;
@@ -290,7 +563,13 @@ body {
   display: none;
 }
 
-/* 대화 아이템 */
+/* 채팅 개수 많을 때 스크롤 */
+.sidebar-chat-list.sidebar-chat-list-limit {
+  max-height: calc(100vh - 260px);
+  overflow-y: auto;
+}
+
+/* --- 개별 채팅 아이템 (루트) --- */
 .sidebar-chat-item {
   position: relative;
   display: flex;
@@ -300,6 +579,7 @@ body {
   border-radius: 0.65rem;
   transition: transform 0.12s ease-out, box-shadow 0.12s ease-out,
     background 0.12s ease-out, opacity 0.12s ease-out;
+  overflow: hidden; /* 더보기 버튼 고정용 */
 }
 
 .sidebar-chat-main {
@@ -315,14 +595,7 @@ body {
   padding: 0.5rem 0.55rem;
   border-radius: 0.55rem;
   cursor: pointer;
-}
-
-.sidebar-chat-item.active .sidebar-chat-main {
-  background: #e5e7eb;
-}
-
-.sidebar-chat-item:not(.active) .sidebar-chat-main:hover {
-  background: #f3f4f6;
+  min-width: 0; /* 더보기 버튼 고정용 */
 }
 
 .sidebar-chat-index {
@@ -336,6 +609,33 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* 루트 채팅 선택 시 */
+.sidebar-chat-item.active .sidebar-chat-main {
+  background: #e5e7eb;
+  outline: 2px solid #3a7afe;
+  outline-offset: 2px;
+}
+
+.sidebar-chat-item:not(.active) .sidebar-chat-main:hover {
+  background: #f3f4f6;
+}
+
+/* 루트 채팅 드래그 */
+.sidebar-chat-item.dragging {
+  opacity: 0.7;
+  transform: scale(0.98);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+}
+
+.sidebar-chat-item.drag-over {
+  background: #e5e7eb;
+  box-shadow: 0 0 0 1px #6366f1;
+}
+
+/* =========================================================
+  [채팅 페이지] 좌측 사이드바 - 더보기 메뉴 (공통)
+  ========================================================= */
 
 /* ... 버튼 (더보기 버튼) */
 .sidebar-chat-more {
@@ -351,6 +651,7 @@ body {
   align-items: center;
   justify-content: center;
   transition: color 0.12s ease-out, transform 0.12s ease-out;
+  flex-shrink: 0; /* 항상 보이도록 고정 */
 }
 
 .sidebar-chat-more:hover {
@@ -358,7 +659,12 @@ body {
   transform: translateY(-1px);
 }
 
-/* 전역 더보기 메뉴 (폴더/채팅 공통) */
+/* 폴더 안 채팅 기록 행의 더보기 버튼 고정 */
+.sidebar-folder-chat-row .sidebar-chat-more {
+  flex-shrink: 0;
+}
+
+/* 전역 더보기 메뉴 (팝업) */
 .sidebar-chat-menu {
   position: fixed;
   background: #111827;
@@ -392,77 +698,18 @@ body {
   border-radius: 0.35rem;
 }
 
-/* 드래그 상태 (채팅) */
-.sidebar-chat-item.dragging {
-  opacity: 0.7;
-  transform: scale(0.98);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
-}
-
-.sidebar-chat-item.drag-over {
-  background: #e5e7eb;
-  box-shadow: 0 0 0 1px #6366f1;
-}
-
-/* 채팅 개수 많을 때 내부 스크롤 (20개 이후) */
-.sidebar-chat-list.sidebar-chat-list-limit {
-  max-height: calc(100vh - 260px);
-  overflow-y: auto;
-}
-
-/* ===== 폴더 섹션 ===== */
-
-.sidebar-folder-title {
-  margin-top: 8px;
-}
-
-.sidebar-folder-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 4px;
-  margin-bottom: 8px;
-  border: 1px solid #e5e7eb;      /* 폴더 구역 테두리 */
-  border-radius: 0.6rem;
-  padding: 4px 4px 6px;
-  background: #fafafa;
-}
-
-.sidebar-folder-empty {
-  font-size: 0.78rem;
-  color: #9ca3af;
-  padding: 4px 2px;
-}
-
-/* 리사이즈 핸들 */
-.sidebar-resize-handle {
-  position: absolute;
-  top: 0;
-  right: -3px;
-  width: 6px;
-  height: 100%;
-  cursor: col-resize;
-}
-
 /* =========================================================
-   [채팅 페이지] 우측 챗봇 영역 (반응형)
-   ========================================================= */
+  [채팅 페이지] 우측 챗봇 영역 - 레이아웃
+  ========================================================= */
 
 .chat-shell {
   flex: 1;
   min-width: 0;
   box-sizing: border-box;
-
   display: flex;
   flex-direction: column;
-
   padding: 5px;
-}
-
-@media (max-width: 768px) {
-  .chat-shell {
-    padding: 5px;
-  }
+  min-height: 0;
 }
 
 .chat-main {
@@ -472,30 +719,33 @@ body {
   justify-content: center;
   align-items: stretch;
   padding: 5px 0;
+  min-height: 0;
 }
 
-/* 가운데 큰 채팅 박스 - 폭 5% 더 크게(95%) */
+/* 가운데 큰 채팅 박스 */
 .chat-container {
   flex: 1;
   min-height: 0;
-
   width: 95%;
   max-width: 95%;
   min-width: 5%;
   margin: 0 auto;
-
   align-self: stretch;
-
   display: flex;
   flex-direction: column;
-
   border-radius: 0.9rem;
   border: 1px solid #e5e7eb;
   background: #ffffff;
   box-shadow: none;
-
   padding: 1.2rem;
   gap: 0.8rem;
+  position: relative; /* 스크롤 컨트롤/그림자 오버레이 기준 */
+}
+
+@media (max-width: 768px) {
+  .chat-shell {
+    padding: 5px;
+  }
 }
 
 @media (max-width: 1200px) {
@@ -505,54 +755,121 @@ body {
   }
 }
 
-/* 채팅 메시지 영역: 내부 스크롤 표시 */
+/* =========================================================
+  [채팅 페이지] 우측 챗봇 영역 - 메시지 창
+  ========================================================= */
+
 .chat-messages {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  -ms-overflow-style: auto;   /* IE/Edge */
-  scrollbar-width: thin;      /* Firefox */
+  -ms-overflow-style: auto; /* IE/Edge */
+  scrollbar-width: thin; /* Firefox */
+  overscroll-behavior: contain; /* 바디로 스크롤 전파 방지 */
+  outline: none; /* 포커스 스타일 직접 제어 */
+  position: relative; /* 그림자 오버레이 기준 */
 }
 
-/* Chrome/Safari(webkit) 커스텀 */
-.chat-messages::-webkit-scrollbar {
-  width: 10px;
+/* 키보드 포커스 시 */
+.chat-messages:focus-visible {
+  box-shadow: inset 0 0 0 2px rgba(58, 122, 254, .25);
+  border-radius: 8px;
 }
-.chat-messages::-webkit-scrollbar-track {
+
+/* --- 스크롤바 스타일 --- */
+.chat-container .chat-messages::-webkit-scrollbar {
+  width: 10px;
+  display: block; /* 스크롤바 항상 표시 */
+}
+.chat-container .chat-messages::-webkit-scrollbar-track {
   background: transparent;
 }
-.chat-messages::-webkit-scrollbar-thumb {
+.chat-container .chat-messages::-webkit-scrollbar-thumb {
   background: #cfd5df;
   border-radius: 8px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
-.chat-messages::-webkit-scrollbar-thumb:hover {
+.chat-container .chat-messages::-webkit-scrollbar-thumb:hover {
   background: #b7bfcc;
 }
-/* 말풍선 */
+
+/* --- 스크롤 상/하단 그림자 --- */
+.chat-container .chat-messages.scroll-shadow-top::before,
+.chat-container .chat-messages.scroll-shadow-bottom::after {
+  content: "";
+  position: sticky;
+  left: 0;
+  right: 0;
+  height: 14px;
+  z-index: 1;
+  display: block;
+}
+.chat-container .chat-messages.scroll-shadow-top::before {
+  top: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.06), transparent);
+}
+.chat-container .chat-messages.scroll-shadow-bottom::after {
+  bottom: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.06), transparent);
+}
+
+/* =========================================================
+  [채팅 페이지] 우측 챗봇 영역 - 말풍선
+  ========================================================= */
+
 .message {
   max-width: 80%;
   padding: 0.55rem 0.8rem;
-  border-radius: 0.9rem;
   font-size: clamp(0.82rem, 1.1vw, 0.9rem);
   line-height: 1.4;
   word-break: break-word;
+  position: relative;
 }
 
+/* AI 봇 말풍선 */
 .message.bot {
   align-self: flex-start;
-  background-color: #ffffff;
-  border: 1px solid #e2e2e2;
+  border-radius: 0.9rem 0.9rem 0.9rem 0.4rem;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
 }
 
+/* 사용자 말풍선 */
 .message.user {
   align-self: flex-end;
-  background-color: #3a7afe;
-  color: #ffffff;
+  border-radius: 0.9rem 0.9rem 0.4rem 0.9rem;
+  background: #3a7afe;
+  color: #fff;
 }
 
-/* 로딩 말풍선 */
+/* --- 말풍선 라벨 (AI / 나) --- */
+.message.bot::after,
+.message.user::after {
+  position: absolute;
+  top: -18px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 999px;
+  line-height: 1;
+  opacity: .85;
+}
+.message.bot::after {
+  content: "AI";
+  left: 8px;
+  color: #0f172a;
+  background: #e5e7eb;
+  border: 1px solid #cbd5e1;
+}
+.message.user::after {
+  content: "나";
+  right: 8px;
+  color: #fff;
+  background: #1d4ed8;
+}
+
+/* --- 로딩 말풍선 --- */
 .loading-message {
   background: #eef3ff;
   border: 1px solid #d0ddff;
@@ -581,7 +898,7 @@ body {
   line-height: 1.4;
 }
 
-/* "..." 애니메이션 점들 */
+/* "..." 타이핑 애니메이션 */
 .typing-dots {
   display: inline-flex;
   align-items: center;
@@ -616,7 +933,10 @@ body {
   }
 }
 
-/* 입력 영역 */
+/* =========================================================
+  [채팅 페이지] 우측 챗봇 영역 - 입력창
+  ========================================================= */
+
 .chat-input-area {
   display: flex;
   gap: 0.5rem;
@@ -670,8 +990,55 @@ body {
 }
 
 /* =========================================================
-   [공통] 가운데 에러/확인 모달
-   ========================================================= */
+  [채팅 페이지] 우측 챗봇 영역 - 스크롤 버튼
+  ========================================================= */
+
+.chat-scroll-ctrls {
+  position: absolute;
+  right: 8px;
+  bottom: 74px; /* 입력창 위로 살짝 */
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 5;
+  pointer-events: none; /* 기본은 통과 */
+}
+.chat-scroll-ctrls .scroll-btn {
+  pointer-events: auto; /* 버튼만 클릭 가능 */
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .12);
+  cursor: pointer;
+  font-size: 16px;
+  display: grid;
+  place-items: center;
+}
+.chat-scroll-ctrls .scroll-btn:hover {
+  background: #f3f4f6;
+}
+
+/* 새 메시지 알림 효과 */
+.chat-scroll-ctrls .scroll-btn.pulse {
+  animation: pulseGlow 1.3s infinite ease-in-out;
+}
+@keyframes pulseGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(58, 122, 254, .35);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(58, 122, 254, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(58, 122, 254, 0);
+  }
+}
+
+/* =========================================================
+  [공통] 가운데 에러/확인 모달
+  ========================================================= */
 
 .error-modal-overlay {
   position: fixed;
@@ -767,129 +1134,7 @@ body {
   background: #a01f18;
 }
 
-/* ===== 사이드바 폴더 UI ===== */
-
-.sidebar-folder-item {
-  position: relative;
-  padding: 4px 6px;
-  border-radius: 0.5rem;
-  background: #ffffff;                /* ★ 폴더 배경: 흰색 */
-  border: 1px solid #e5e7eb;
-  cursor: pointer;
-  transition: background 0.16s ease-out, border-color 0.16s ease-out,
-    transform 0.16s ease-out, box-shadow 0.16s ease-out, opacity 0.16s ease-out;
-}
-
-/* 폴더 드래그 모션 (채팅과 동일 느낌) */
-.sidebar-folder-item.dragging {
-  opacity: 0.7;
-  transform: scale(0.98);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
-}
-
-/* 폴더 위로 드래그 올라갔을 때 */
-.sidebar-folder-item.drag-over {
-  border-color: #f97373;              /* 연한 레드 테두리 */
-  background: #fff5f5;                /* 옅은 레드 배경 */
-}
-
-/* 폴더 선택 시 테두리 강조 (색 + 두께 + 살짝 띄움) */
-.sidebar-folder-item.selected {
-  border-color: #d92c2c;              /* ★ 레드 농도 더 진하게 */
-  box-shadow: 0 0 0 2px rgba(217, 44, 44, 0.85);
-  background: #fff5f5;
-  transform: translateY(-1px);
-}
-
-.sidebar-folder-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.sidebar-folder-name {
-  font-size: 0.8rem;
-  color: #111827;                     /* 흰 배경에 어두운 글자 */
-}
-
-.sidebar-folder-count {
-  font-size: 0.7rem;
-  color: #6b7280;
-}
-
-.sidebar-folder-chats {
-  margin-top: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-/* 폴더 안 개별 채팅 행 */
-.sidebar-folder-chat-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 0;
-  border-radius: 0.45rem;
-  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out,
-    background 0.12s ease-out, opacity 0.12s ease-out;
-}
-
-.sidebar-folder-chat-row.dragging {
-  opacity: 0.7;
-  transform: scale(0.98);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
-}
-
-.sidebar-folder-chat-row.drag-over {
-  background: #e5e7eb;
-  box-shadow: 0 0 0 1px #6366f1;
-}
-
-.sidebar-folder-chat {
-  width: 100%;
-  text-align: left;
-  border: none;
-  background: transparent;
-  color: #111827;                     /* 폴더 안 채팅 글자: 어두운 색 */
-  font-size: 0.78rem;
-  padding: 2px 4px;
-  border-radius: 0.4rem;
-  cursor: pointer;
-  transition: background 0.14s ease-out, transform 0.14s ease-out,
-    box-shadow 0.14s ease-out, color 0.14s ease-out;
-}
-
-.sidebar-folder-chat:hover {
-  background: #f3f4f6;
-  transform: translateX(1px);
-}
-
-.sidebar-folder-chat.active {
-  background: #e5e7eb;
-}
-
-.sidebar-new-folder-btn {
-  margin-top: 4px;
-  width: 100%;
-  border-radius: 999px;
-  border: 1px dashed #4a4b51;
-  background: transparent;
-  color: #6b7280;
-  padding: 0.35rem 0.6rem;
-  font-size: 0.78rem;
-  cursor: pointer;
-  text-align: center;
-  transition: border-color 0.14s ease-out, background 0.14s ease-out,
-    color 0.14s ease-out;
-}
-
-.sidebar-new-folder-btn:hover {
-  border-style: solid;
-  color: #111827;
-}
-
-/* 모달 애니메이션 키프레임 */
+/* --- 모달 애니메이션 --- */
 
 @keyframes modalOverlayFadeIn {
   from {
@@ -909,315 +1154,4 @@ body {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
-}
-
-/* =========================================================
-   [추가] 요구사항 1~4 반영용 스타일 (기존 코드 수정 없이 추가)
-   ========================================================= */
-
-/* 1,3. 폴더가 채팅보다 상위 클래스: 
-   - 폴더 구역(폴더)
-   - 채팅 구역(채팅)
-   - 대화 기록(채팅 기록)
-   - 폴더(사용자가 만든 폴더) 라벨링 */
-
-/* 첫 번째 섹션 타이틀(폴더 섹션) → '폴더 구역(폴더)' 로 표시 */
-.chat-sidebar > .sidebar-section-title:first-of-type {
-  font-size: 0;           /* 기존 텍스트(폴더) 숨기기 */
-  position: relative;
-}
-
-.chat-sidebar > .sidebar-section-title:first-of-type::before {
-  content: "폴더 구역(폴더)";
-  font-size: 0.75rem;
-  color: #6b7280;
-}
-
-/* 채팅 섹션 타이틀 → '채팅 구역(채팅)' 로 표시 */
-.sidebar-chat-section .sidebar-section-title {
-  font-size: 0;           /* 기존 텍스트(채팅) 숨기기 */
-  position: relative;
-}
-
-.sidebar-chat-section .sidebar-section-title::before {
-  content: "채팅 구역(채팅)";
-  font-size: 0.75rem;
-  color: #6b7280;
-}
-
-/* 폴더 안의 채팅 목록 상단에 '대화 기록(채팅 기록)' 라벨 추가 */
-.sidebar-folder-chats::before {
-  content: "대화 기록(채팅 기록)";
-  display: block;
-  font-size: 0.7rem;
-  color: #9ca3af;
-  margin: 2px 2px 4px;
-}
-
-/* 폴더가 없을 때 문구를 '폴더(사용자가 만든 폴더)가 없습니다.' 느낌으로 */
-.sidebar-folder-empty {
-  font-size: 0;          /* 기존 텍스트 숨기고 */
-  position: relative;
-}
-
-.sidebar-folder-empty::before {
-  content: "폴더(사용자가 만든 폴더)가 없습니다.";
-  font-size: 0.78rem;
-  color: #9ca3af;
-}
-
-/* 4. 크롬 창이 작아져도 채팅 기록의 더보기(⋯) 버튼은 항상 보이도록 처리 */
-
-/* 사이드바 채팅 구역의 각 채팅 기록 행 */
-.sidebar-chat-item {
-  overflow: hidden;      /* 가로 공간 줄어도 내부 컨텐츠 자르기 */
-}
-
-.sidebar-chat-main {
-  min-width: 0;          /* 제목 쪽이 먼저 줄어들 수 있게 */
-}
-
-.sidebar-chat-more {
-  flex-shrink: 0;        /* ⋯ 버튼은 줄어들지 않도록 고정 */
-}
-
-/* 폴더 안 채팅 기록 행도 동일하게 처리 */
-.sidebar-folder-chat-row {
-  overflow: hidden;
-}
-
-.sidebar-folder-chat {
-  min-width: 0;
-}
-
-.sidebar-folder-chat-row .sidebar-chat-more {
-  flex-shrink: 0;
-}
-
-
-/* === 채팅 내부 스크롤 UX 보강 === */
-.chat-container {
-  position: relative; /* 스크롤 컨트롤 고정용 */
-}
-
-.chat-messages {
-  overscroll-behavior: contain; /* 바디로 스크롤 전파 방지 */
-  outline: none;                /* 포커스 스타일 직접 제어 */
-}
-
-/* 채팅 내부 부동(浮動) 스크롤 버튼 묶음 */
-.chat-scroll-controls {
-  position: absolute;
-  right: 8px;
-  bottom: 84px; /* 입력창과 겹치지 않게 */
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  z-index: 5;
-  pointer-events: none; /* 컨테이너 밖 클릭 통과 */
-}
-
-.chat-scroll-controls .chat-scroll-btn {
-  pointer-events: auto; /* 버튼만 클릭 가능 */
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-  color: #374151;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0,0,0,.12);
-  transition: transform .12s ease-out, box-shadow .12s ease-out, background .12s ease-out;
-}
-
-.chat-scroll-controls .chat-scroll-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(0,0,0,.18);
-  background: #f9fafb;
-}
-
-.chat-scroll-controls .chat-scroll-btn:active {
-  transform: translateY(0);
-}
-
-/* 키보드 포커스 시 가시성 */
-.chat-messages:focus-visible {
-  box-shadow: inset 0 0 0 2px rgba(58,122,254,.25);
-  border-radius: 8px;
-}
-
-
-/* ========== [추가] 채팅창 내부 스크롤 표시 & 스타일 ========== */
-.chat-container .chat-messages{
-  overflow-y: auto;
-  -ms-overflow-style: auto;     /* IE/Edge */
-  scrollbar-width: thin;        /* Firefox */
-  position: relative;           /* 그림자 오버레이 기준 */
-}
-
-/* WebKit (Chrome/Safari) 스크롤바 커스텀 */
-.chat-container .chat-messages::-webkit-scrollbar{
-  width: 10px;
-  display: block;               /* 이전의 display:none 무력화 */
-}
-.chat-container .chat-messages::-webkit-scrollbar-track{
-  background: transparent;
-}
-.chat-container .chat-messages::-webkit-scrollbar-thumb{
-  background: #cfd5df;
-  border-radius: 8px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-.chat-container .chat-messages::-webkit-scrollbar-thumb:hover{
-  background: #b7bfcc;
-}
-
-/* 스크롤 가능 시 상/하단 페이드 (JS가 클래스를 토글함) */
-.chat-container .chat-messages.scroll-shadow-top::before,
-.chat-container .chat-messages.scroll-shadow-bottom::after{
-  content: "";
-  position: sticky;
-  left: 0; right: 0;
-  height: 14px;
-  z-index: 1;
-  display: block;
-}
-.chat-container .chat-messages.scroll-shadow-top::before{
-  top: 0;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.06), transparent);
-}
-.chat-container .chat-messages.scroll-shadow-bottom::after{
-  bottom: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.06), transparent);
-}
-
-/* ========== [추가] AI/사용자 구분 시각 강화(라벨·꼬리) ========== */
-.message{
-  position: relative;
-}
-.message.bot{
-  border-radius: 0.9rem 0.9rem 0.9rem 0.4rem;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-}
-.message.user{
-  border-radius: 0.9rem 0.9rem 0.4rem 0.9rem;
-  background: #3a7afe;
-  color: #fff;
-}
-
-/* 말풍선 라벨 (마크업 수정 없이 pseudo 요소로) */
-.message.bot::after,
-.message.user::after{
-  position: absolute;
-  top: -18px;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 999px;
-  line-height: 1;
-  opacity: .85;
-}
-.message.bot::after{
-  content: "AI";
-  left: 8px;
-  color: #0f172a;
-  background: #e5e7eb;
-  border: 1px solid #cbd5e1;
-}
-.message.user::after{
-  content: "나";
-  right: 8px;
-  color: #fff;
-  background: #1d4ed8;
-}
-
-/* ========== [추가] 스크롤 컨트롤 버튼 오버레이 ========== */
-.chat-scroll-ctrls{
-  position: absolute;
-  right: 8px;
-  bottom: 74px;                 /* 입력창 위로 살짝 */
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  z-index: 5;
-  pointer-events: none;         /* 기본은 통과 */
-}
-.chat-scroll-ctrls .scroll-btn{
-  pointer-events: auto;         /* 버튼만 클릭 가능 */
-  width: 34px; height: 34px;
-  border-radius: 50%;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-  box-shadow: 0 6px 16px rgba(0,0,0,.12);
-  cursor: pointer;
-  font-size: 16px;
-  display: grid;
-  place-items: center;
-}
-.chat-scroll-ctrls .scroll-btn:hover{
-  background: #f3f4f6;
-}
-.chat-scroll-ctrls .scroll-btn.pulse{
-  animation: pulseGlow 1.3s infinite ease-in-out;
-}
-@keyframes pulseGlow{
-  0%{ box-shadow: 0 0 0 0 rgba(58,122,254,.35); }
-  70%{ box-shadow: 0 0 0 10px rgba(58,122,254,0); }
-  100%{ box-shadow: 0 0 0 0 rgba(58,122,254,0); }
-}
-
-/* 컨테이너를 오버레이 기준으로 */
-.chat-container{ position: relative; }
-
-/* 부모들도 내부 스크롤 잘 동작하도록 (flex 자식 높이 계산) */
-.chat-layout, .chat-shell, .chat-main{ min-height: 0; }
-
-/* 1) 루트 채팅 선택: 파란 링(블루) */
-.sidebar-chat-item.active .sidebar-chat-main {
-  background: #e5e7eb;
-  outline: 2px solid #3a7afe;
-  outline-offset: 2px;
-}
-
-/* 2) 폴더 안 채팅 선택: 파란 링(블루) */
-.sidebar-folder-chat.active {
-  background: #eef3ff;
-  outline: 2px solid #3a7afe;
-  outline-offset: 2px;
-}
-
-/* 3) 폴더가 상위라는 시각: 폴더 내부 대화 들여쓰기 + 점선 보조선 */
-.sidebar-folder-chats {
-  margin-top: 4px;
-  padding-left: 10px;
-  border-left: 1px dashed #e5e7eb;
-}
-
-/* 4) 폴더 헤더/빈 폴더에 '대화' 드롭 시 하이라이트 */
-.sidebar-folder-item.drop-chat .sidebar-folder-header {
-  box-shadow: 0 0 0 2px #6366f1 inset;
-  background: #eef2ff;
-  border-radius: .4rem;
-}
-
-/* 빈 폴더 드롭존(jsx에 .sidebar-folder-empty-drop가 렌더링됨) */
-.sidebar-folder-empty-drop {
-  margin-top: 6px;
-  padding: 6px 8px;
-  font-size: .75rem;
-  color: #9ca3af;
-  background: #fafafa;
-  border: 1px dashed #d1d5db;
-  border-radius: .45rem;
-}
-.sidebar-folder-item.drop-chat .sidebar-folder-empty-drop,
-.sidebar-folder-empty-drop.drop-chat {
-  border-color: #6366f1;
-  background: #eef2ff;
 }
