@@ -122,14 +122,11 @@ body {
   ========================================================= */
 
 .start-chat-btn {
-  /* position: absolute; 관련 코드를 모두 제거합니다. */
-
-  /* 이 코드가 버튼을 이미지 아래에, 수평으로 가운데 정렬합니다. */
   margin-top: 2.5vh;
   margin-inline: auto;
 
   width: 50vw;
-  min-width: 10px;
+  min-width: 430px;
   padding: 1rem 1.4rem;
   border-radius: 0.6rem;
   border: none;
