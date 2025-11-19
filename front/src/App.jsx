@@ -83,17 +83,17 @@ function HomePage() {
         </div>
       </header>
 
-          <main className="home-main">
-            <div className="home-main-inner">
-              <div className="hero-image">
-                <img className="hero-bg" src="/img/homepage.jpg" alt="홈 배경" />
-              </div>
+      <main className="home-main">
+        <div className="home-main-inner">
+          <div className="hero-image">
+            <img className="hero-bg" src="/img/homepage.jpg" alt="홈 배경" />
+          </div>
 
-              <button
-                className="start-chat-btn"
-                onClick={() => navigate("/chat", { state: { newChat: true } })}
-              >
-          채팅 시작 하기
+          <button
+            className="start-chat-btn"
+            onClick={() => navigate("/chat", { state: { newChat: true } })}
+          >
+            채팅 시작 하기
           </button>
         </div>
       </main>
@@ -394,6 +394,16 @@ function ChatPage() {
   const [errorInfo, setErrorInfo] = useState(null);
   const [focusArea, setFocusArea] = useState("chat"); // 'chat' | 'folder'
 
+  // 🔍 채팅 검색 상태 추가
+  const [chatSearch, setChatSearch] = useState("");
+
+  // 빠른 예시 질문
+  const quickPrompts = [
+    "영어 문장 자연스럽게 고쳐줘",
+    "이 코드에서 버그 찾아줘",
+    "자산관리/세금 관련해서 상담해줘",
+  ];
+
   // 채팅용 더보기 메뉴
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [menuPosition, setMenuPosition] = useState(null); // {x,y}
@@ -437,8 +447,7 @@ function ChatPage() {
   const conversations = chatState.conversations || [];
   const folders = chatState.folders || [];
   const currentId = chatState.currentId;
-  const currentConv =
-    conversations.find((c) => c.id === currentId) || conversations[0];
+  const currentConv = conversations.find((c) => c.id === currentId) || conversations[0];
   const messages = currentConv ? currentConv.messages : [];
 
   // ----------------------------- 저장: 대화 목록 + 폴더
@@ -916,44 +925,57 @@ function ChatPage() {
     if (id !== dragOverId) setDragOverId(id);
   };
 
-  // 루트 채팅 아이템 위로 드롭 → 순서 변경 + 폴더 해제
-  const handleDropOnRootItem = (e, targetConvId) => {
-    e.preventDefault();
-    e.stopPropagation();
+// 루트 채팅 아이템 위로 드롭 → 위/아래 모두 부드럽게 순서 변경
+const handleDropOnRootItem = (e, targetConvId) => {
+  e.preventDefault();
+  e.stopPropagation();
 
-    const candidate = draggingId || getDraggedChatId(e);
-    if (
-      !candidate ||
-      candidate === targetConvId ||
-      !(conversations || []).some((c) => c.id === candidate)
-    ) {
-      setDraggingId(null);
-      setDragOverId(null);
-      setDragOverFolderId(null);
-      return;
-    }
-
-    setChatState((prev) => {
-      const list = [...(prev.conversations || [])];
-      const fromIndex = list.findIndex((c) => c.id === candidate);
-      const toIndex = list.findIndex((c) => c.id === targetConvId);
-      if (fromIndex === -1 || toIndex === -1) return prev;
-
-      const [movedRaw] = list.splice(fromIndex, 1);
-      const moved =
-        movedRaw.folderId !== null ? { ...movedRaw, folderId: null } : movedRaw;
-
-      const newToIndex = list.findIndex((c) => c.id === targetConvId);
-      const insertIndex = newToIndex === -1 ? list.length : newToIndex;
-
-      list.splice(insertIndex, 0, moved);
-      return { ...prev, conversations: list };
-    });
-
+  const candidate = draggingId || getDraggedChatId(e);
+  if (
+    !candidate ||
+    candidate === targetConvId ||
+    !(conversations || []).some((c) => c.id === candidate)
+  ) {
     setDraggingId(null);
     setDragOverId(null);
     setDragOverFolderId(null);
-  };
+    return;
+  }
+
+  // 🔹 드롭 위치가 타깃 아이템의 위/아래인지 계산
+  const rect = e.currentTarget.getBoundingClientRect();
+  const centerY = rect.top + rect.height / 2;
+  const insertAfter = e.clientY > centerY; // 아래쪽이면 true
+
+  setChatState((prev) => {
+    const list = [...(prev.conversations || [])];
+    const fromIndex = list.findIndex((c) => c.id === candidate);
+    let toIndex = list.findIndex((c) => c.id === targetConvId);
+    if (fromIndex === -1 || toIndex === -1) return prev;
+
+    // 먼저 원래 위치에서 빼고
+    const [movedRaw] = list.splice(fromIndex, 1);
+    const moved =
+      movedRaw.folderId !== null ? { ...movedRaw, folderId: null } : movedRaw;
+
+    // 🔹 위에 있던 걸 아래로 내릴 때 인덱스 보정
+    if (fromIndex < toIndex) {
+      toIndex -= 1;
+    }
+
+    let insertIndex = insertAfter ? toIndex + 1 : toIndex;
+
+    if (insertIndex < 0) insertIndex = 0;
+    if (insertIndex > list.length) insertIndex = list.length;
+
+    list.splice(insertIndex, 0, moved);
+    return { ...prev, conversations: list };
+  });
+
+  setDraggingId(null);
+  setDragOverId(null);
+  setDragOverFolderId(null);
+};
 
   // 폴더 안 채팅 위로 드롭 → 같은/다른 폴더로 이동 & 순서 변경
   const handleDropOnFolderChat = (e, targetConvId, folderId) => {
@@ -1007,45 +1029,99 @@ function ChatPage() {
     setDragOverFolderId(null);
     if (rootListRef.current) autoScroll(rootListRef.current, e.clientY);
   };
-  const handleRootListDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  
+const handleRootListDrop = (e) => {
+  e.preventDefault();
+  e.stopPropagation();
 
-    // 폴더를 채팅 구역에 드롭하면 무시
-    if (folderDraggingId) {
-      setFolderDraggingId(null);
-      setFolderDragOverId(null);
-      setDragOverFolderId(null);
-      setDraggingId(null);
-      setDragOverId(null);
-      return;
-    }
+  // 폴더를 채팅 구역에 드롭하면 무시
+  if (folderDraggingId) {
+    setFolderDraggingId(null);
+    setFolderDragOverId(null);
+    setDragOverFolderId(null);
+    setDraggingId(null);
+    setDragOverId(null);
+    return;
+  }
 
-    const candidate = draggingId || getDraggedChatId(e);
-    if (!candidate || !(conversations || []).some((c) => c.id === candidate)) {
-      setDraggingId(null);
-      setDragOverId(null);
-      setDragOverFolderId(null);
-      return;
-    }
-
-    setChatState((prev) => {
-      const list = [...(prev.conversations || [])];
-      const fromIndex = list.findIndex((c) => c.id === candidate);
-      if (fromIndex === -1) return prev;
-
-      const [movedRaw] = list.splice(fromIndex, 1);
-      const moved =
-        movedRaw.folderId !== null ? { ...movedRaw, folderId: null } : movedRaw;
-
-      list.push(moved);
-      return { ...prev, conversations: list };
-    });
-
+  const candidate = draggingId || getDraggedChatId(e);
+  if (!candidate || !(conversations || []).some((c) => c.id === candidate)) {
     setDraggingId(null);
     setDragOverId(null);
     setDragOverFolderId(null);
-  };
+    return;
+  }
+
+  // 🔹 마우스 위치 기준으로 가장 가까운 채팅 아이템 찾기
+  let targetId = null;
+  const container = rootListRef.current;
+  if (container) {
+    const items = Array.from(
+      container.querySelectorAll(".sidebar-chat-item")
+    );
+    if (items.length > 0) {
+      const mouseY = e.clientY;
+      let nearestId = null;
+      let nearestDist = Infinity;
+
+      items.forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        const centerY = rect.top + rect.height / 2;
+        const dist = Math.abs(mouseY - centerY);
+        if (dist < nearestDist) {
+          nearestDist = dist;
+          nearestId = el.dataset.chatId;
+        }
+      });
+
+      targetId = nearestId;
+    }
+  }
+
+  setChatState((prev) => {
+    const list = [...(prev.conversations || [])];
+    const fromIndex = list.findIndex((c) => c.id === candidate);
+    if (fromIndex === -1) return prev;
+
+    const [movedRaw] = list.splice(fromIndex, 1);
+    const moved =
+      movedRaw.folderId !== null ? { ...movedRaw, folderId: null } : movedRaw;
+
+    if (!targetId) {
+      // 혹시 타깃을 못 찾으면 기존처럼 맨 뒤로
+      list.push(moved);
+    } else {
+      const toIndex = list.findIndex((c) => c.id === targetId);
+      if (toIndex === -1) {
+        list.push(moved);
+      } else {
+        // 🔹 드롭한 위치가 타깃의 위/아래인지에 따라 앞/뒤로 삽입
+        let insertIndex = toIndex;
+        if (container) {
+          const targetEl = container.querySelector(
+            `.sidebar-chat-item[data-chat-id="${targetId}"]`
+          );
+          if (targetEl) {
+            const rect = targetEl.getBoundingClientRect();
+            const centerY = rect.top + rect.height / 2;
+            if (e.clientY > centerY) {
+              insertIndex = toIndex + 1;
+            }
+          }
+        }
+        list.splice(insertIndex, 0, moved);
+      }
+    }
+
+    return { ...prev, conversations: list };
+  });
+
+  setDraggingId(null);
+  setDragOverId(null);
+  setDragOverFolderId(null);
+};
+
+  // ----------------------------- 드래그 종료
 
   const handleDragEnd = () => {
     setDraggingId(null);
@@ -1188,6 +1264,11 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
 
   // 폴더에 들어가지 않은 루트 채팅 목록
   const rootConversations = conversations.filter((c) => !c.folderId);
+
+  // 검색어 기준 필터링된 루트 채팅 목록
+  const filteredRootConversations = rootConversations.filter((conv) =>
+    conv.title.toLowerCase().includes(chatSearch.toLowerCase())
+  );
 
   // 전역 더보기용 활성 대화 / 폴더
   const activeMenuConversation = menuOpenId
@@ -1475,6 +1556,14 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
               >
                 <div className="sidebar-section-title">채팅</div>
 
+                {/* 🔍 채팅 검색 인풋 */}
+                <input
+                  className="sidebar-chat-search"
+                  placeholder="채팅 검색..."
+                  value={chatSearch}
+                  onChange={(e) => setChatSearch(e.target.value)}
+                />
+
                 <div
                   className={
                     "sidebar-chat-list" +
@@ -1488,7 +1577,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                     setSelectedFolderId(null);
                   }}
                 >
-                  {rootConversations.map((conv, idx) => {
+                  {filteredRootConversations.map((conv, idx) => {
                     const isActive = conv.id === currentId;
                     const isDragging = conv.id === draggingId;
                     const isDragOver = conv.id === dragOverId;
@@ -1496,6 +1585,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                     return (
                       <div
                         key={conv.id}
+                        data-chat-id={conv.id}
                         className={
                           "sidebar-chat-item" +
                           (isActive ? " active" : "") +
@@ -1572,6 +1662,13 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           <header className="app-header chat-header">
             <div className="logo-box" onClick={() => navigate("/")}>
               <h1 className="logo-text small">챗봇</h1>
+            </div>
+
+            {/* 🔹 헤더 상태/모델 뱃지 */}
+            <div className="chat-header-status">
+              <span className="status-dot status-online" />
+              <span className="status-text">온라인</span>
+              <span className="model-badge">Flask · Local LLM</span>
             </div>
           </header>
 
@@ -1670,6 +1767,21 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                 )}
 
                 <div ref={messagesEndRef} />
+              </div>
+
+              {/* 🔹 빠른 예시 질문 버튼 */}
+              <div className="chat-quick-prompts">
+                {quickPrompts.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    className="chat-quick-prompt-btn"
+                    onClick={() => setInput(p)}
+                    disabled={loading}
+                  >
+                    {p}
+                  </button>
+                ))}
               </div>
 
               {/* 입력 영역 */}

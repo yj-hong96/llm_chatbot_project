@@ -48,7 +48,7 @@ body {
   justify-content: center;
   margin-top: 4vh;
   margin-bottom: 3vh;
-  
+
   /* --- 추가 --- */
   padding-left: 1.2rem;  /* 예시: 왼쪽 여백 */
   padding-right: 1.2rem; /* 예시: 오른쪽 여백 */
@@ -89,7 +89,7 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: flex-end;
+  align-items: flex-end; /* 모든 자식 요소를 오른쪽 정렬 */
   padding-top: 4vh;
   padding-bottom: 6vh;
   padding-left: 25vw;
@@ -103,7 +103,8 @@ body {
 
 .hero-image {
   width: 50vw;
-  margin: 0 auto;
+  /* [수정] margin: 0 auto; 를 제거(주석 처리)하여 오른쪽 정렬 적용 */
+  /* margin: 0 auto; */
   aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: 0.6rem;
@@ -123,10 +124,14 @@ body {
 
 .start-chat-btn {
   margin-top: 2.5vh;
-  margin-inline: auto;
+  /* [수정] margin-inline: auto; 를 제거(주석 처리)하여 오른쪽 정렬 적용 */
+  /* margin-inline: auto; */
 
-  width: 50vw;
-  min-width: 430px;
+  /* [추가] 버튼 안의 글자를 가운데 정렬합니다 */
+  text-align: center;
+
+  width: 50vw; /* .hero-image와 동일한 너비로 설정 */
+  min-width: 450px;
   padding: 1rem 1.4rem;
   border-radius: 0.6rem;
   border: none;
@@ -1233,3 +1238,4 @@ body {
   color: #70758a;
   line-height: 1.4;
 }
+
