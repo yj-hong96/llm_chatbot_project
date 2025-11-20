@@ -843,14 +843,16 @@ function ChatPage() {
   // ----------------------------- 드롭: 폴더 영역에 드롭
   const handleFolderDrop = (e, folderId) => {
     e.preventDefault();
+    e.stopPropagation();
 
-    // (1) 폴더 순서 변경 (사용자가 이전에 추가한 내용)
-    if (folderDraggingId) {
+    // 1) 폴더를 드롭한 경우: 폴더 순서 변경
+    const draggedFolderId = folderDraggingId || getDraggedFolderId(e);
+    if (draggedFolderId) {
       setChatState((prev) => {
         const list = [...(prev.folders || [])];
-        const fromIndex = list.findIndex((f) => f.id === folderDraggingId);
+        const fromIndex = list.findIndex((f) => f.id === draggedFolderId);
         const toIndex = list.findIndex((f) => f.id === folderId);
-        if (fromIndex === -1 || toIndex === -1) return prev;
+        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return prev;
 
         const [moved] = list.splice(fromIndex, 1);
         list.splice(toIndex, 0, moved);
@@ -863,7 +865,7 @@ function ChatPage() {
       return;
     }
 
-    // (2) 채팅 → 폴더로 이동
+    // 2) 채팅 → 폴더로 이동
     const convId = draggingId || getDraggedChatId(e);
     if (!convId) {
       setDraggingId(null);
@@ -1523,9 +1525,21 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                           }}
                           onDragOver={(e) => {
                             e.preventDefault();
-                            setDragOverFolderId(folder.id);
+                            // 폴더 드래그 중이면 폴더 재정렬 하이라이트, 아니면 채팅 드롭 하이라이트
+                            if (folderDraggingId || getDraggedFolderId(e)) {
+                              setFolderDragOverId(folder.id);
+                            } else {
+                              setDragOverFolderId(folder.id);
+                            }
                           }}
-                          onDrop={(e) => handleDropChatOnFolderHeader(e, folder.id)}
+                          onDrop={(e) => {
+                            // 폴더를 헤더에 드롭하면 순서 변경, 채팅이면 폴더로 이동
+                            if (folderDraggingId || getDraggedFolderId(e)) {
+                              handleFolderDrop(e, folder.id);
+                            } else {
+                              handleDropChatOnFolderHeader(e, folder.id);
+                            }
+                          }}
                         >
                           <button
                             title={collapsed ? "대화 펼치기" : "대화 접기"}
@@ -2149,7 +2163,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                     handleCreateFolderConfirm();
                   }
                 }}
-                className="modal-input" // ✅ [수정]: style -> className
+                className="modal-input"
               />
             </div>
             <div className="error-modal-footer">
@@ -2186,7 +2200,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                 onChange={(e) =>
                   setFolderRenameInfo((prev) => ({ ...prev, value: e.target.value }))
                 }
-                className="modal-input" // ✅ [수정]: style -> className
+                className="modal-input"
               />
             </div>
             <div className="error-modal-footer">
@@ -2216,7 +2230,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                 onChange={(e) =>
                   setRenameInfo((prev) => ({ ...prev, value: e.target.value }))
                 }
-                className="modal-input" // ✅ [수정]: style -> className
+                className="modal-input"
               />
             </div>
             <div className="error-modal-footer">
