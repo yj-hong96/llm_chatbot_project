@@ -375,6 +375,7 @@ function ChatPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [foldersCollapsed, setFoldersCollapsed] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
 
   // ✅ 폴더별 접힘 상태(토글 버튼에 사용)
   const [collapsedFolderIds, setCollapsedFolderIds] = useState(() => new Set());
@@ -1175,6 +1176,9 @@ function ChatPage() {
         body: JSON.stringify({ message: trimmed }),
       });
 
+      // ✅ 서버 응답이 오면 일단 온라인으로 표시
+      setIsOnline(true);
+
       const data = await res.json();
       if (data.error) {
         const info = makeErrorInfo(data.error);
@@ -1210,6 +1214,9 @@ function ChatPage() {
         });
       }
     } catch (err) {
+      // ❌ 네트워크 단에서 실패하면 오프라인으로 표시
+      setIsOnline(false);
+
       const info = makeErrorInfo(err?.message || err);
       setChatState((prev) => {
         const now = Date.now();
@@ -1806,8 +1813,14 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
 
             {/* 🔹 헤더 상태/모델 뱃지 */}
             <div className="chat-header-status">
-              <span className="status-dot status-online" />
-              <span className="status-text">온라인</span>
+              <span
+                className={
+                  "status-dot " + (isOnline ? "status-online" : "status-offline")
+                }
+              />
+              <span className="status-text">
+                {isOnline ? "온라인" : "오프라인"}
+              </span>
               <span className="model-badge">Flask · Local LLM</span>
             </div>
           </header>
