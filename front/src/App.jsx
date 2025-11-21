@@ -1,4 +1,4 @@
-// app.jsx
+// App.jsx
 // =========================================================
 // 메인/챗 라우팅 + 사이드바(폴더·채팅) + 드래그/드롭 + 모달 + 에러 처리
 // (홈 화면은 변경 없음. 채팅 페이지만 개선)
@@ -9,7 +9,7 @@ import { useState, useEffect, useRef } from "react";
 import "./App.css";
 
 const STORAGE_KEY = "chatConversations_v2";
-// ✅ 5. API BASE: .env 에서 가져오되, 없으면 로컬 기본값
+// ✅ API BASE: .env 에서 가져오되, 없으면 로컬 기본값
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:5000";
 
@@ -377,12 +377,13 @@ function getDraggedFolderId(e) {
 function ChatPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [foldersCollapsed, setFoldersCollapsed] = useState(false);
+  const [foldersCollapsed] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [hoveredMessageIndex, setHoveredMessageIndex] = useState(null);
   const [openMessageMenuIndex, setOpenMessageMenuIndex] = useState(null);
+  const [copyToastVisible, setCopyToastVisible] = useState(false);
 
-  // ✅ 폴더별 접힘 상태
+  // ✅ 폴더별 접힘 상태 관리
   const [collapsedFolderIds, setCollapsedFolderIds] = useState(() => new Set());
   const isFolderCollapsed = (id) => collapsedFolderIds.has(id);
   const toggleFolder = (id) =>
@@ -458,8 +459,7 @@ function ChatPage() {
     conversations.find((c) => c.id === currentId) || conversations[0];
   const messages = currentConv ? currentConv.messages : [];
 
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [editTitleValue, setEditTitleValue] = useState("");
+  // (제목 수정 버튼이 사라졌으므로 관련된 편집 상태 삭제)
 
   const isCurrentPending =
     loading && currentConv && pendingConvId && currentConv.id === pendingConvId;
@@ -473,14 +473,6 @@ function ChatPage() {
       console.error("대화 목록 저장 중 오류:", e);
     }
   }, [conversations, folders, currentId]);
-
-  // ----------------------------- currentId 변경 시 헤더 제목 상태 초기화
-  useEffect(() => {
-    if (currentConv) {
-      setIsEditingTitle(false);
-      setEditTitleValue(currentConv.title || "");
-    }
-  }, [currentId]);
 
   // ----------------------------- 채팅창 끝으로 스크롤
   const messagesEndRef = useRef(null);
@@ -498,6 +490,7 @@ function ChatPage() {
     const handleWindowClick = () => {
       setMenuOpenId(null);
       setFolderMenuOpenId(null);
+      setOpenMessageMenuIndex(null);
     };
     window.addEventListener("click", handleWindowClick);
     return () => window.removeEventListener("click", handleWindowClick);
@@ -561,6 +554,7 @@ function ChatPage() {
         setMenuOpenId(null);
         setFolderMenuOpenId(null);
         setIsSearchModalOpen(false);
+        setOpenMessageMenuIndex(null);
         return;
       }
       if (e.key !== "Enter") return;
@@ -875,7 +869,7 @@ function ChatPage() {
     setSelectedFolderId((prevSelectedId) => {
       if (prevSelectedId !== folderId) return prevSelectedId;
       const remaining = (folders || []).filter((f) => f.id !== folderId);
-      return remaining.length ? remaining[Math.min(0, remaining.length - 1)].id : null;
+      return remaining.length ? remaining[0].id : null;
     });
 
     setFocusArea("folder");
@@ -1200,9 +1194,19 @@ function ChatPage() {
       alert("클립보드 복사를 지원하지 않는 브라우저입니다.");
       return;
     }
-    navigator.clipboard.writeText(text).catch(() => {
-      alert("복사에 실패했습니다. 다시 시도해 주세요.");
-    });
+
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        // 🔔 복사 성공 시 모달 표시 (애니메이션 재시작 위해 false -> true)
+        setCopyToastVisible(false);
+        requestAnimationFrame(() => {
+          setCopyToastVisible(true);
+        });
+      })
+      .catch(() => {
+        alert("복사에 실패했습니다. 다시 시도해 주세요.");
+      });
   };
 
   // ----------------------------- 메시지 전송
@@ -1371,7 +1375,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
   // ------------------------------------------------------- 렌더링
   return (
     <div className="page chat-page">
-      {/* 검색 모달 전용 스타일 (생략 가능하면 CSS로 분리해도 됨) */}
+      {/* 검색 모달 + 로딩/복사 모달 전용 스타일 */}
       <style>{`
         .sidebar-search-trigger {
           width: calc(100% - 24px);
@@ -1474,8 +1478,98 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           from { opacity: 0; transform: translateY(-10px); }
           to { opacity: 1; transform: translateY(0); }
         }
+
+        /* typing dots (로딩중 ... 애니메이션) */
+        .typing-dots {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+        }
+        .typing-dots .dot {
+          width: 4px;
+          height: 4px;
+          border-radius: 999px;
+          background: currentColor;
+          opacity: 0.4;
+          animation: typingDots 1s infinite ease-in-out;
+        }
+        .typing-dots .dot:nth-child(2) {
+          animation-delay: 0.15s;
+        }
+        .typing-dots .dot:nth-child(3) {
+          animation-delay: 0.3s;
+        }
+        @keyframes typingDots {
+          0%, 80%, 100% {
+            transform: translateY(0);
+            opacity: 0.4;
+          }
+          40% {
+            transform: translateY(-2px);
+            opacity: 1;
+          }
+        }
+        .sidebar-chat-pending {
+          font-size: 11px;
+          color: #9ca3af;
+        }
+
+        /* 복사 완료 모달 (가운데) */
+        .copy-modal-overlay {
+          position: fixed;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(0, 0, 0, 0.35);
+          z-index: 10000;
+        }
+        .copy-modal {
+          background: #ffffff;
+          border-radius: 12px;
+          padding: 20px 24px 16px;
+          min-width: 220px;
+          max-width: 280px;
+          text-align: center;
+          box-shadow:
+            0 20px 25px -5px rgba(0, 0, 0, 0.1),
+            0 10px 10px -5px rgba(0, 0, 0, 0.04);
+          animation: copyModalFadeIn 0.2s ease-out;
+        }
+        .copy-modal-body {
+          font-size: 14px;
+          color: #111827;
+          margin-bottom: 16px;
+        }
+        .copy-modal-footer {
+          display: flex;
+          justify-content: center;
+        }
+        .copy-modal-button {
+          padding: 6px 18px;
+          border-radius: 999px;
+          border: none;
+          background: #2563eb;
+          color: #ffffff;
+          font-size: 13px;
+          cursor: pointer;
+        }
+        .copy-modal-button:hover {
+          background: #1d4ed8;
+        }
+        @keyframes copyModalFadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(4px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
       `}</style>
 
+      {/* 모바일용 사이드바 토글 버튼 */}
       <button
         className="sidebar-toggle-btn"
         onClick={(e) => {
@@ -1509,6 +1603,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
 
           {!sidebarCollapsed && (
             <>
+              {/* 채팅 검색 트리거 버튼 */}
               <button
                 className="sidebar-search-trigger"
                 onClick={() => {
@@ -1712,13 +1807,17 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                                     <span className="sidebar-folder-chat-title">
                                       {conv.title}
                                     </span>
+
+                                    {/* ✅ 폴더 안 채팅: 응답 대기중 로딩 애니메이션 (점 3개) */}
                                     {isPending && (
                                       <span
-                                        className="sidebar-chat-pending"
-                                        style={{ marginLeft: 4, fontSize: 10 }}
+                                        className="sidebar-chat-pending typing-dots"
+                                        style={{ marginLeft: 4 }}
                                         aria-label="응답 대기 중"
                                       >
-                                        ●
+                                        <span className="dot" />
+                                        <span className="dot" />
+                                        <span className="dot" />
                                       </span>
                                     )}
                                   </button>
@@ -1835,13 +1934,17 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                         >
                           <span className="sidebar-chat-index">{idx + 1}</span>
                           <span className="sidebar-chat-title">{conv.title}</span>
+
+                          {/* ✅ 루트 채팅: 응답 대기중 로딩 애니메이션 (점 3개) */}
                           {isPending && (
                             <span
-                              className="sidebar-chat-pending"
-                              style={{ marginLeft: 4, fontSize: 10 }}
+                              className="sidebar-chat-pending typing-dots"
+                              style={{ marginLeft: 4 }}
                               aria-label="응답 대기 중"
                             >
-                              ●
+                              <span className="dot" />
+                              <span className="dot" />
+                              <span className="dot" />
                             </span>
                           )}
                         </button>
@@ -1891,57 +1994,28 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
             setSelectedFolderId(null);
           }}
         >
-          <header className="app-header chat-header">
-            <div className="logo-box" onClick={() => navigate("/")}>
-              <h1 className="logo-text small">챗봇</h1>
+          <header className="app-header chat-header" style={{ position: "relative" }}>
+            {/* 좌측 로고 제거됨 */}
+
+            {/* 중앙: 챗봇 로고 (절대 위치로 중앙 정렬) */}
+            <div
+              className="logo-box"
+              onClick={() => navigate("/")}
+              style={{
+                position: "absolute",
+                left: "50%",
+                transform: "translateX(-50%)",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}
+            >
+              <h1 className="logo-text small" style={{ margin: 0 }}>챗봇</h1>
             </div>
 
-            <div className="chat-header-title">
-              {currentConv &&
-                (isEditingTitle ? (
-                  <input
-                    className="chat-header-title-input"
-                    value={editTitleValue}
-                    onChange={(e) => setEditTitleValue(e.target.value)}
-                    autoFocus
-                    onBlur={() => {
-                      const trimmed = (editTitleValue || "").trim();
-                      if (trimmed) {
-                        handleRenameConversation(currentConv.id, trimmed);
-                      }
-                      setIsEditingTitle(false);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        const trimmed = (editTitleValue || "").trim();
-                        if (trimmed) {
-                          handleRenameConversation(currentConv.id, trimmed);
-                        }
-                        setIsEditingTitle(false);
-                      } else if (e.key === "Escape") {
-                        e.preventDefault();
-                        setIsEditingTitle(false);
-                        setEditTitleValue(currentConv?.title || "");
-                      }
-                    }}
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    className="chat-header-title-text"
-                    onClick={() => {
-                      setIsEditingTitle(true);
-                      setEditTitleValue(currentConv.title || "");
-                    }}
-                    title="클릭해서 제목 변경"
-                  >
-                    {currentConv.title || "새 대화"}
-                  </button>
-                ))}
-            </div>
-
-            <div className="chat-header-status">
+            {/* 우측: 상태 표시 */}
+            <div className="chat-header-status" style={{ marginLeft: "auto" }}>
               <span
                 className={
                   "status-dot " + (isOnline ? "status-online" : "status-offline")
@@ -1963,8 +2037,8 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                   const align = isBot ? "flex-start" : "flex-end";
                   const bubbleBg = isBot ? "#e6f4ff" : "#fee500";
 
-                  const isHovered = hoveredMessageIndex === idx;
                   const isMenuOpen = openMessageMenuIndex === idx;
+                  const isHovered = hoveredMessageIndex === idx;
 
                   return (
                     <div
@@ -1984,7 +2058,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                         );
                       }}
                     >
-                      {/* 🔹 여기 래퍼에 className 추가 */}
+                      {/* 메시지 버블 래퍼 */}
                       <div
                         className="chat-message-bubble-wrapper"
                         style={{
@@ -1998,7 +2072,21 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                       >
                         {/* 봇 메시지: ⋯ + '더 보기' + 복사 메뉴 */}
                         {isBot && (
-                          <>
+                          <div className="message-menu-wrapper">
+                            {/* 더 보기 라벨 (위) */}
+                            <span
+                              className="message-more-label"
+                              style={{
+                                opacity: isHovered || isMenuOpen ? 1 : 0,
+                                transform:
+                                  isHovered || isMenuOpen ? "translateY(0)" : "translateY(4px)",
+                                pointerEvents: "none",
+                              }}
+                            >
+                              더 보기
+                            </span>
+
+                            {/* ... 버튼 (아래) */}
                             <button
                               type="button"
                               className="message-menu-trigger"
@@ -2008,21 +2096,14 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                                   prev === idx ? null : idx
                                 );
                               }}
+                              style={{
+                                opacity: isHovered || isMenuOpen ? 1 : 0,
+                                pointerEvents: isHovered || isMenuOpen ? "auto" : "none",
+                              }}
                             >
                               ⋯
                             </button>
-
-                            <span
-                              className="message-more-label"
-                              style={
-                                isMenuOpen
-                                  ? { opacity: 1, visibility: "visible" }
-                                  : undefined
-                              }
-                            >
-                              더 보기
-                            </span>
-                          </>
+                          </div>
                         )}
 
                         {isBot && isMenuOpen && (
@@ -2064,6 +2145,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                   );
                 })}
 
+                {/* 메인 영역: 챗봇 응답 대기중일 때 로딩 카드 */}
                 {isCurrentPending && (
                   <div
                     style={{
@@ -2094,6 +2176,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                           <span className="loading-title">
                             챗봇이 답변을 준비하고 있어요
                           </span>
+                          {/* ✅ 메인 로딩도 typing-dots 재사용 */}
                           <span className="typing-dots">
                             <span className="dot" />
                             <span className="dot" />
@@ -2528,6 +2611,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                 ✕
               </button>
             </div>
+            
             <div className="error-modal-body">
               <p className="error-modal-guide">{errorInfo.guide}</p>
               <p className="error-modal-hint">{errorInfo.hint}</p>
@@ -2544,6 +2628,29 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                 onClick={openErrorDetailWindow}
               >
                 원본 오류 상세 새 창에서 보기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== 복사 완료 모달 (가운데) ===== */}
+      {copyToastVisible && (
+        <div
+          className="copy-modal-overlay"
+          onClick={() => setCopyToastVisible(false)}
+        >
+          <div
+            className="copy-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="copy-modal-body">복사되었습니다.</div>
+            <div className="copy-modal-footer">
+              <button
+                className="copy-modal-button"
+                onClick={() => setCopyToastVisible(false)}
+              >
+                확인
               </button>
             </div>
           </div>

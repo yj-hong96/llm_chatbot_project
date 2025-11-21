@@ -1,6 +1,6 @@
 /* =========================================================
-  [공통] 리셋 + 기본 설정
-  ========================================================= */
+  [공통] 리셋 + 기본 설정
+  ========================================================= */
 
 * {
   margin: 0;
@@ -38,8 +38,14 @@ body {
 }
 
 /* =========================================================
-  [홈 페이지] 메인 화면 레이아웃 (채팅)
-  ========================================================= */
+  [홈 페이지] 메인 화면 레이아웃 (채팅)
+  ========================================================= */
+
+.home-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
 
 /* 로고를 감싸는 박스 */
 .logo-box {
@@ -48,12 +54,8 @@ body {
   justify-content: center;
   margin-top: 4vh;
   margin-bottom: 3vh;
-
-  /* --- 추가 --- */
-  padding-left: 1.2rem;  /* 예시: 왼쪽 여백 */
-  padding-right: 1.2rem; /* 예시: 오른쪽 여백 */
-  /* ------------ */
-
+  padding-left: 1.2rem;
+  padding-right: 1.2rem;
   border-radius: 0.8rem;
   background-color: transparent;
   cursor: pointer;
@@ -73,16 +75,6 @@ body {
   font-size: clamp(1.8rem, 3.4vw, 2.6rem);
 }
 
-/* =========================================================
-  [홈 페이지] 메인 화면 레이아웃 (채팅)
-  ========================================================= */
-
-.home-page {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
 .home-main {
   flex: 1;
   width: 100%;
@@ -93,18 +85,24 @@ body {
   padding-top: 4vh;
   padding-bottom: 6vh;
   padding-left: 25vw;
-  padding-right: 26vw; /* 챗봇 -> 예시: 오른쪽 여백 */
+  padding-right: 26vw;
   gap: 3vh;
 }
 
+/* 홈 내부 래퍼 (이미지 + 버튼 묶음) */
+.home-main-inner {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
 /* =========================================================
-  [홈 페이지] Hero 이미지 (homepage.jpg)
-  ========================================================= */
+  [홈 페이지] Hero 이미지 (homepage.jpg)
+  ========================================================= */
 
 .hero-image {
   width: 50vw;
-  /* [수정] margin: 0 auto; 를 제거(주석 처리)하여 오른쪽 정렬 적용 */
-  /* margin: 0 auto; */
   aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: 0.6rem;
@@ -119,18 +117,13 @@ body {
 }
 
 /* =========================================================
-  [홈 페이지] 채팅 시작하기 버튼
-  ========================================================= */
+  [홈 페이지] 채팅 시작하기 버튼
+  ========================================================= */
 
 .start-chat-btn {
   margin-top: 2.5vh;
-  /* [수정] margin-inline: auto; 를 제거(주석 처리)하여 오른쪽 정렬 적용 */
-  /* margin-inline: auto; */
-
-  /* [추가] 버튼 안의 글자를 가운데 정렬합니다 */
   text-align: center;
-
-  width: 50vw; /* .hero-image와 동일한 너비로 설정 */
+  width: 50vw; /* .hero-image와 동일한 너비 */
   min-width: 450px;
   padding: 1rem 1.4rem;
   border-radius: 0.6rem;
@@ -149,13 +142,18 @@ body {
 }
 
 /* =========================================================
-  [홈 페이지] 반응형 미디어 쿼리
-  ========================================================= */
+  [홈 페이지] 반응형 미디어 쿼리
+  ========================================================= */
 
 @media (max-width: 768px) {
   .home-main {
     padding-left: 6vw;
     padding-right: 6vw;
+    align-items: center;
+  }
+
+  .home-main-inner {
+    align-items: center;
   }
 
   .hero-image {
@@ -164,12 +162,13 @@ body {
 
   .start-chat-btn {
     width: 70vw;
+    min-width: 0;
   }
 }
 
 /* =========================================================
-  [채팅 페이지] 전체 레이아웃
-  ========================================================= */
+  [채팅 페이지] 전체 레이아웃
+  ========================================================= */
 
 .chat-page {
   flex: 1;
@@ -184,18 +183,46 @@ body {
   flex: 1;
   display: flex;
   width: 90vw;
-  height: 92vh; /* 세로 영역 약간 넓게 */
+  height: 92vh;
   max-width: 90vw;
   max-height: 92vh;
   min-width: 5vw;
-  min-height: 0; /* min-height 추가됨 */
-  margin: auto auto auto 0; /* 위/아래는 가운데, 좌측 0으로 붙이기 */
+  min-height: 0;
+  margin: auto auto auto 0;
   box-sizing: border-box;
 }
 
+/* 모바일에서 사이드바 토글 버튼 */
+.sidebar-toggle-btn {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .chat-layout {
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
+  }
+
+  .sidebar-toggle-btn {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    z-index: 1100;
+  }
+}
+
 /* =========================================================
-  [채팅 페이지] 좌측 사이드바 (공통)
-  ========================================================= */
+  [채팅 페이지] 좌측 사이드바 (공통)
+  ========================================================= */
 
 .chat-sidebar {
   position: relative;
@@ -287,8 +314,8 @@ body {
 }
 
 /* =========================================================
-  [채팅 페이지] 좌측 사이드바 - 섹션 제목 (공통)
-  ========================================================= */
+  [채팅 페이지] 좌측 사이드바 - 섹션 제목 (공통)
+  ========================================================= */
 
 .sidebar-section-title {
   font-size: 0.75rem;
@@ -296,7 +323,7 @@ body {
   padding: 4px 2px 2px;
   transition: color 0.15s ease-out;
   position: relative;
-  padding-right: 22px; /* 아이콘 들어갈 공간 */
+  padding-right: 22px;
 }
 
 /* 폴더 섹션 제목 오른쪽에 folder.png */
@@ -327,8 +354,6 @@ body {
   pointer-events: none;
 }
 
-/* --- 섹션 제목 라벨링 --- */
-
 /* 첫 번째 섹션 타이틀(폴더 섹션) → '폴더 구역(폴더)' */
 .chat-sidebar > .sidebar-section-title:first-of-type {
   font-size: 0;
@@ -354,8 +379,8 @@ body {
 }
 
 /* =========================================================
-  [채팅 페이지] 좌측 사이드바 - 폴더 구역
-  ========================================================= */
+  [채팅 페이지] 좌측 사이드바 - 폴더 구역
+  ========================================================= */
 
 .sidebar-folder-title {
   margin-top: 8px;
@@ -387,7 +412,7 @@ body {
   color: #9ca3af;
 }
 
-/* --- 개별 폴더 아이템 --- */
+/* 개별 폴더 아이템 */
 .sidebar-folder-item {
   position: relative;
   padding: 4px 6px;
@@ -403,6 +428,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 6px;
 }
 
 .sidebar-folder-name {
@@ -430,7 +456,6 @@ body {
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
 }
 
-/* 폴더 위로 드래그 */
 .sidebar-folder-item.drag-over {
   border-color: #f97373;
   background: #fff5f5;
@@ -460,8 +485,7 @@ body {
   background: #eef2ff;
 }
 
-/* --- 폴더 내부 채팅 리스트 --- */
-
+/* 폴더 내부 채팅 리스트 */
 .sidebar-folder-chats {
   margin-top: 4px;
   display: flex;
@@ -552,9 +576,47 @@ body {
   color: #111827;
 }
 
+/* 폴더 토글 버튼 */
+.sidebar-folder-toggle {
+  width: 22px;
+  height: 22px;
+  line-height: 22px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.sidebar-folder-toggle:hover {
+  background: #f9fafb;
+}
+
+/* 폴더 컨트롤 */
+.sidebar-folder-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+/* 폴더 접힘 상태 */
+.sidebar-folder-item.collapsed .sidebar-folder-chats {
+  display: none;
+}
+
+.sidebar-folder-item.collapsed .sidebar-folder-empty-drop {
+  display: none;
+}
+
 /* =========================================================
-  [채팅 페이지] 좌측 사이드바 - 채팅 구역
-  ========================================================= */
+  [채팅 페이지] 좌측 사이드바 - 채팅 구역
+  ========================================================= */
 
 .sidebar-chat-section {
   margin-top: 10px;
@@ -587,7 +649,7 @@ body {
   overflow-y: auto;
 }
 
-/* --- 개별 채팅 아이템 (루트) --- */
+/* 개별 채팅 아이템 (루트) */
 .sidebar-chat-item {
   position: relative;
   display: flex;
@@ -651,10 +713,7 @@ body {
   box-shadow: 0 0 0 1px #6366f1;
 }
 
-/* =========================================================
-  [채팅 페이지] 좌측 사이드바 - 더보기 메뉴 (공통)
-  ========================================================= */
-
+/* 더보기 버튼 */
 .sidebar-chat-more {
   border: none;
   background: transparent;
@@ -714,9 +773,16 @@ body {
   border-radius: 0.35rem;
 }
 
+/* 사이드바 로딩 점(●●●) */
+.sidebar-chat-pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
 /* =========================================================
-  [채팅 페이지] 우측 챗봇 영역 - 레이아웃
-  ========================================================= */
+  [채팅 페이지] 우측 챗봇 영역 - 레이아웃
+  ========================================================= */
 
 .chat-shell {
   flex: 1;
@@ -726,6 +792,56 @@ body {
   flex-direction: column;
   padding: 5px;
   min-height: 0;
+}
+
+/* 채팅 상단 헤더 */
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px 8px;
+}
+
+/* 헤더 중간 제목 영역 */
+.chat-header-title {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 0 8px;
+}
+
+.chat-header-title-input {
+  max-width: 360px;
+  width: 100%;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.chat-header-title-input:focus {
+  border-color: #3a7afe;
+  box-shadow: 0 0 0 2px rgba(58, 122, 254, 0.2);
+}
+
+.chat-header-title-text {
+  max-width: 360px;
+  width: 100%;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px dashed transparent;
+  font-size: 0.9rem;
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-header-title-text:hover {
+  border-color: #e5e7eb;
+  background-color: #f9fafb;
 }
 
 .chat-main {
@@ -772,8 +888,8 @@ body {
 }
 
 /* =========================================================
-  [채팅 페이지] 우측 챗봇 영역 - 메시지 창
-  ========================================================= */
+  [채팅 페이지] 우측 챗봇 영역 - 메시지 창
+  ========================================================= */
 
 .chat-messages {
   flex: 1;
@@ -828,8 +944,8 @@ body {
 }
 
 /* =========================================================
-  [채팅 페이지] 우측 챗봇 영역 - 말풍선
-  ========================================================= */
+  [채팅 페이지] 우측 챗봇 영역 - 말풍선 (구버전: 필요 시)
+  ========================================================= */
 
 .message {
   max-width: 80%;
@@ -854,7 +970,7 @@ body {
   color: #fff;
 }
 
-/* --- 말풍선 라벨 (AI / 나) --- */
+/* 말풍선 라벨 (AI / 나) */
 .message.bot::after,
 .message.user::after {
   position: absolute;
@@ -882,7 +998,7 @@ body {
   background: #1d4ed8;
 }
 
-/* --- 로딩 말풍선 --- */
+/* 로딩 말풍선 */
 .loading-message {
   background: #eef3ff;
   border: 1px solid #d0ddff;
@@ -892,7 +1008,10 @@ body {
   align-items: flex-start;
 }
 
-/* "..." 타이핑 애니메이션 */
+/* =========================================================
+  [공통] "..." 타이핑 애니메이션 (채팅창/사이드바 공용)
+  ========================================================= */
+
 .typing-dots {
   display: inline-flex;
   align-items: center;
@@ -904,14 +1023,18 @@ body {
   border-radius: 50%;
   background-color: #3a7afe;
   margin-left: 3px;
+  display: inline-block;
   animation: typingBlink 1.1s infinite ease-in-out;
 }
 
-.typing-dots .dot:nth-child(2) {
-  animation-delay: 0.15s;
-}
-.typing-dots .dot:nth-child(3) {
-  animation-delay: 0.3s;
+/* 사이드바 로딩 점에도 동일 애니메이션 적용 */
+.sidebar-chat-pending .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #3a7afe;
+  display: inline-block;
+  animation: typingBlink 1.1s infinite ease-in-out;
 }
 
 @keyframes typingBlink {
@@ -928,8 +1051,8 @@ body {
 }
 
 /* =========================================================
-  [채팅 페이지] 우측 챗봇 영역 - 입력창
-  ========================================================= */
+  [채팅 페이지] 우측 챗봇 영역 - 입력창
+  ========================================================= */
 
 .chat-input-area {
   display: flex;
@@ -984,8 +1107,43 @@ body {
 }
 
 /* =========================================================
-  [채팅 페이지] 우측 챗봇 영역 - 스크롤 버튼
-  ========================================================= */
+  [채팅 페이지] 우측 챗봇 영역 - 퀵 프롬프트
+  ========================================================= */
+
+.chat-quick-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.chat-quick-prompt-btn {
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  background: #f9fafb;
+  color: #4b5563;
+  cursor: pointer;
+  transition: background 0.15s ease-out, border-color 0.15s ease-out,
+    transform 0.1s ease-out, box-shadow 0.1s ease-out;
+}
+
+.chat-quick-prompt-btn:hover:enabled {
+  background: #eef2ff;
+  border-color: #6366f1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+}
+
+.chat-quick-prompt-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* =========================================================
+  [채팅 페이지] 우측 챗봇 영역 - 스크롤 버튼
+  ========================================================= */
 
 .chat-scroll-ctrls {
   position: absolute;
@@ -1030,8 +1188,8 @@ body {
 }
 
 /* =========================================================
-  [공통] 가운데 에러/확인 모달
-  ========================================================= */
+  [공통] 가운데 에러/확인 모달
+  ========================================================= */
 
 .error-modal-overlay {
   position: fixed;
@@ -1144,66 +1302,7 @@ body {
   }
 }
 
-/* =========================================================
-  [추가] 사이드바 폴더 토글 버튼
-  ========================================================= */
-
-.sidebar-folder-toggle {
-  width: 22px;
-  height: 22px;
-  line-height: 22px;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
-  background: #ffffff;
-  font-size: 14px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  user-select: none;
-  flex-shrink: 0;
-}
-.sidebar-folder-toggle:hover {
-  background: #f9fafb;
-}
-
-/* =========================================================
-  [추가] 사이드바 폴더 헤더 gap 수정
-  ========================================================= */
-
-.sidebar-folder-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 6px;
-}
-
-/* =========================================================
-  [추가] 사이드바 폴더 컨트롤
-  ========================================================= */
-
-.sidebar-folder-controls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-}
-
-/* =========================================================
-  [추가] 폴더 접힘(Collapse) 상태
-  ========================================================= */
-
-.sidebar-folder-item.collapsed .sidebar-folder-chats {
-  display: none;
-}
-.sidebar-folder-item.collapsed .sidebar-folder-empty-drop {
-  display: none;
-}
-
-/* =========================================================
-  [추가] 모달 내부 인풋(Input) 스타일
-  ========================================================= */
-
+/* 모달 내부 인풋(Input) 스타일 */
 .modal-input {
   width: 100%;
   margin-top: 0.5rem;
@@ -1219,8 +1318,8 @@ body {
 }
 
 /* =========================================================
-  [추가] 로딩 말풍선(겹치는 정의 통합)
-  ========================================================= */
+  [추가] 로딩 말풍선 텍스트
+  ========================================================= */
 
 .loading-main-row {
   display: flex;
@@ -1238,6 +1337,10 @@ body {
   color: #70758a;
   line-height: 1.4;
 }
+
+/* =========================================================
+  [추가] 헤더 상태 표시 (온라인/오프라인 + 배지)
+  ========================================================= */
 
 .chat-header-status {
   display: flex;
@@ -1274,8 +1377,11 @@ body {
   color: #6b7280;
 }
 
+/* =========================================================
+  [추가] 봇 메시지 말풍선 래퍼 + 더보기 메뉴
+  ========================================================= */
 
-/* 봇 메시지 말풍선 래퍼 */
+/* 봇/유저 공통 말풍선 래퍼 */
 .chat-message-bubble-wrapper {
   position: relative;
 }
@@ -1292,8 +1398,8 @@ body {
   cursor: pointer;
   padding: 0 3px;
   line-height: 1;
-  opacity: 1;           /* 항상 보이게 */
-  visibility: visible;  /* 항상 보이게 */
+  opacity: 1;
+  visibility: visible;
 }
 
 /* "더 보기" 텍스트 (작게, 회색, 기본 숨김) */
@@ -1315,7 +1421,7 @@ body {
   visibility: visible;
 }
 
-/* 복사 메뉴 컨테이너 (pill 모양) */
+/* 복사 메뉴 컨테이너 */
 .message-menu {
   position: absolute;
   top: 22px;
@@ -1340,4 +1446,182 @@ body {
 }
 .message-menu-item:hover {
   text-decoration: underline;
+}
+
+/* =========================================================
+  [추가] 복사 완료 토스트
+  ========================================================= */
+
+.copy-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  font-size: 14px;
+  pointer-events: none;
+  z-index: 9999;
+  animation: copyToastFade 1.6s ease-out forwards;
+}
+
+@keyframes copyToastFade {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px) scale(0.96);
+  }
+  25% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+  70% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px) scale(0.98);
+  }
+}
+
+/* ==== typing dots (로딩중 ...) ==== */
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.typing-dots .dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.4;
+  animation: typingDots 1s infinite ease-in-out;
+}
+
+.typing-dots .dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing-dots .dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typingDots {
+  0%, 80%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  40% {
+    transform: translateY(-2px);
+    opacity: 1;
+  }
+}
+
+/* 사이드바에서 로딩 텍스트 색 살짝 연하게 */
+.sidebar-chat-pending {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* ==== 복사 완료 모달 ==== */
+/* ==== 복사 완료 모달 ==== */
+.copy-modal-overlay {
+  position: fixed;
+  inset: 0;                 /* top:0; right:0; bottom:0; left:0; */
+  display: flex;
+  align-items: center;      /* 세로 가운데 */
+  justify-content: center;  /* 가로 가운데 */
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 9999;
+}
+
+.copy-modal {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px 24px 16px;
+  min-width: 220px;
+  max-width: 280px;
+  text-align: center;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: copyModalFadeIn 0.2s ease-out;
+}
+
+.copy-modal-body {
+  font-size: 14px;
+  color: #111827;
+  margin-bottom: 16px;
+}
+
+.copy-modal-footer {
+  display: flex;
+  justify-content: center;
+}
+
+.copy-modal-button {
+  padding: 6px 18px;
+  border-radius: 999px;
+  border: none;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.copy-modal-button:hover {
+  background: #1d4ed8;
+}
+
+@keyframes copyModalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ===============================
+   챗 페이지 헤더/채팅창 겹침 해결
+   =============================== */
+
+/* 상단 헤더 레이아웃 */
+.chat-page .chat-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 24px 12px;
+  background: #ffffff;
+  margin-bottom: 12px;      /* 헤더랑 채팅 카드 사이 간격 */
+}
+
+/* 로고 박스: 인라인 absolute 없애기 */
+.chat-page .chat-header .logo-box {
+  position: static !important;   /* inline position:absolute 덮어쓰기 */
+  left: auto !important;
+  transform: none !important;
+
+  margin: 0 auto;                /* 가운데 정렬 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 오른쪽 상태 표시 영역 */
+.chat-page .chat-header .chat-header-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 채팅 카드 안에서 첫 메시지랑 윗부분이 너무 붙어 있으면 살짝 띄우기 */
+.chat-page .chat-container {
+  padding-top: 24px;
 }
