@@ -1273,3 +1273,71 @@ body {
   font-size: 12px;
   color: #6b7280;
 }
+
+
+/* 봇 메시지 말풍선 래퍼 */
+.chat-message-bubble-wrapper {
+  position: relative;
+}
+
+/* ... 버튼 (작고, 굵게, 항상 보이게) */
+.message-menu-trigger {
+  position: absolute;
+  top: 4px;
+  right: -2px;
+  border: none;
+  background: transparent;
+  font-weight: 700;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0 3px;
+  line-height: 1;
+  opacity: 1;           /* 항상 보이게 */
+  visibility: visible;  /* 항상 보이게 */
+}
+
+/* "더 보기" 텍스트 (작게, 회색, 기본 숨김) */
+.message-more-label {
+  position: absolute;
+  top: 4px;
+  right: 18px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #555;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease;
+}
+
+/* 말풍선에 마우스를 올렸을 때 "더 보기"만 노출 */
+.chat-message-bubble-wrapper:hover .message-more-label {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* 복사 메뉴 컨테이너 (pill 모양) */
+.message-menu {
+  position: absolute;
+  top: 22px;
+  right: 0;
+  background: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
+  padding: 2px 10px;
+  display: flex;
+  align-items: center;
+  z-index: 5;
+}
+
+/* 복사 버튼 텍스트 */
+.message-menu-item {
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 0;
+}
+.message-menu-item:hover {
+  text-decoration: underline;
+}
