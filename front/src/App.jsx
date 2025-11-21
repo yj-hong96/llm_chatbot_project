@@ -408,12 +408,6 @@ function ChatPage() {
   // ✅ 현재 어떤 채팅방이 응답 대기 중인지 추적
   const [pendingConvId, setPendingConvId] = useState(null);
 
-  const quickPrompts = [
-    "영어 문장 자연스럽게 고쳐줘",
-    "이 코드에서 버그 찾아줘",
-    "자산관리/세금 관련해서 상담해줘",
-  ];
-
   // 채팅용 더보기 메뉴
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [menuPosition, setMenuPosition] = useState(null); // {x,y}
@@ -458,8 +452,6 @@ function ChatPage() {
   const currentConv =
     conversations.find((c) => c.id === currentId) || conversations[0];
   const messages = currentConv ? currentConv.messages : [];
-
-  // (제목 수정 버튼이 사라졌으므로 관련된 편집 상태 삭제)
 
   const isCurrentPending =
     loading && currentConv && pendingConvId && currentConv.id === pendingConvId;
@@ -1198,7 +1190,6 @@ function ChatPage() {
     navigator.clipboard
       .writeText(text)
       .then(() => {
-        // 🔔 복사 성공 시 모달 표시 (애니메이션 재시작 위해 false -> true)
         setCopyToastVisible(false);
         requestAnimationFrame(() => {
           setCopyToastVisible(true);
@@ -1808,7 +1799,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                                       {conv.title}
                                     </span>
 
-                                    {/* ✅ 폴더 안 채팅: 응답 대기중 로딩 애니메이션 (점 3개) */}
                                     {isPending && (
                                       <span
                                         className="sidebar-chat-pending typing-dots"
@@ -1935,7 +1925,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                           <span className="sidebar-chat-index">{idx + 1}</span>
                           <span className="sidebar-chat-title">{conv.title}</span>
 
-                          {/* ✅ 루트 채팅: 응답 대기중 로딩 애니메이션 (점 3개) */}
                           {isPending && (
                             <span
                               className="sidebar-chat-pending typing-dots"
@@ -1995,8 +1984,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           }}
         >
           <header className="app-header chat-header" style={{ position: "relative" }}>
-            {/* 좌측 로고 제거됨 */}
-
             {/* 중앙: 챗봇 로고 (절대 위치로 중앙 정렬) */}
             <div
               className="logo-box"
@@ -2014,17 +2001,15 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
               <h1 className="logo-text small" style={{ margin: 0 }}>챗봇</h1>
             </div>
 
-            {/* 우측: 상태 표시 */}
+            {/* 우측: 상태 표시 (초록색 동그라미만 표시) */}
             <div className="chat-header-status" style={{ marginLeft: "auto" }}>
               <span
                 className={
                   "status-dot " + (isOnline ? "status-online" : "status-offline")
                 }
+                aria-label={isOnline ? "온라인" : "오프라인"}
+                title={isOnline ? "온라인" : "오프라인"}
               />
-              <span className="status-text">
-                {isOnline ? "온라인" : "오프라인"}
-              </span>
-              <span className="model-badge">Flask · Local LLM</span>
             </div>
           </header>
 
@@ -2058,7 +2043,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                         );
                       }}
                     >
-                      {/* 메시지 버블 래퍼 */}
                       <div
                         className="chat-message-bubble-wrapper"
                         style={{
@@ -2070,10 +2054,8 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                           background: "var(--page-bg, #ffffff)",
                         }}
                       >
-                        {/* 봇 메시지: ⋯ + '더 보기' + 복사 메뉴 */}
                         {isBot && (
                           <div className="message-menu-wrapper">
-                            {/* 더 보기 라벨 (위) */}
                             <span
                               className="message-more-label"
                               style={{
@@ -2086,7 +2068,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                               더 보기
                             </span>
 
-                            {/* ... 버튼 (아래) */}
                             <button
                               type="button"
                               className="message-menu-trigger"
@@ -2176,7 +2157,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                           <span className="loading-title">
                             챗봇이 답변을 준비하고 있어요
                           </span>
-                          {/* ✅ 메인 로딩도 typing-dots 재사용 */}
                           <span className="typing-dots">
                             <span className="dot" />
                             <span className="dot" />
@@ -2192,21 +2172,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                 )}
 
                 <div ref={messagesEndRef} />
-              </div>
-
-              {/* 🔹 빠른 예시 질문 */}
-              <div className="chat-quick-prompts">
-                {quickPrompts.map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    className="chat-quick-prompt-btn"
-                    onClick={() => setInput(p)}
-                    disabled={isCurrentPending}
-                  >
-                    {p}
-                  </button>
-                ))}
               </div>
 
               {/* 입력 영역 */}
