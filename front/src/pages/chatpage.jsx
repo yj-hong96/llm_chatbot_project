@@ -1332,9 +1332,24 @@ function ChatPage() {
   };
 
   const handleInputKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
+    if (e.key === "Enter") {
+      if (e.altKey) {
+        // Alt+Enter → 줄바꿈만
+        e.preventDefault();
+        const { selectionStart, selectionEnd, value } = e.target;
+        const next =
+          value.slice(0, selectionStart) + "\n" + value.slice(selectionEnd);
+        setInput(next);
+
+        // 커서 위치도 줄바꿈 뒤로
+        requestAnimationFrame(() => {
+          e.target.selectionStart = e.target.selectionEnd = selectionStart + 1;
+        });
+      } else if (!e.shiftKey) {
+        // 그냥 Enter → 전송
+        e.preventDefault();
+        sendMessage();
+      }
     }
   };
 

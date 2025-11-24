@@ -13,45 +13,21 @@ function ChatInput({
 }) {
   const textareaRef = useRef(null);
 
-  // ✅ 입력 내용이 바뀔 때마다 textarea 높이를 자동으로 조절
-  useEffect(() => {
-    const el = textareaRef.current;
+  // ✅ 높이 자동 조절 함수
+  const autoResize = (el) => {
     if (!el) return;
+    el.style.height = "auto";          // 먼저 높이 초기화
+    el.style.height = el.scrollHeight + "px"; // 내용에 맞게 다시 설정
+  };
 
-    // 높이 리셋 후, 실제 내용 높이만큼 다시 지정
-    el.style.height = "auto";
-
-    const maxHeight = 200; // 필요하면 더 키우거나 줄여도 됨 (px)
-    const newHeight = Math.min(el.scrollHeight, maxHeight);
-
-    el.style.height = `${newHeight}px`;
+  // ✅ input 값이 바뀔 때마다 항상 높이 재계산 (Alt+Enter 포함)
+  useEffect(() => {
+    autoResize(textareaRef.current);
   }, [input]);
 
-  // ✅ Alt+Enter → 줄바꿈, 그냥 Enter → 기존 전송 로직
-  const onKeyDown = (e) => {
-    // Alt + Enter → 줄바꿈만
-    if (e.key === "Enter" && e.altKey) {
-      e.preventDefault();
-
-      const target = e.target;
-      const { selectionStart, selectionEnd, value } = target;
-
-      const newValue =
-        value.slice(0, selectionStart) + "\n" + value.slice(selectionEnd);
-
-      setInput(newValue);
-
-      // 커서 줄바꿈 뒤로 이동
-      requestAnimationFrame(() => {
-        const pos = selectionStart + 1;
-        target.selectionStart = target.selectionEnd = pos;
-      });
-
-      return;
-    }
-
-    // 나머지 키(그냥 Enter 등)는 원래 handleInputKeyDown에 맡기기
-    handleInputKeyDown(e);
+  const handleChange = (e) => {
+    setInput(e.target.value);
+    autoResize(e.target);
   };
 
   return (
@@ -59,7 +35,6 @@ function ChatInput({
       <textarea
         ref={textareaRef}
         className="chat-input"
-        rows={1}
         placeholder={
           !isOnline
             ? "오프라인 상태입니다. 인터넷 연결을 확인해 주세요."
@@ -68,12 +43,17 @@ function ChatInput({
             : "메시지를 입력하세요..."
         }
         value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={onKeyDown}
+        onChange={handleChange}
+        onKeyDown={handleInputKeyDown}   // Alt+Enter / Enter 로직은 ChatPage에 이미 있음
         disabled={isCurrentPending}
         onFocus={() => {
           setFocusArea("chat");
           setSelectedFolderId(null);
+        }}
+        rows={1}
+        style={{
+          resize: "none",          // 🔒 마우스로 크기 조절 금지
+          overflow: "hidden",      // 스크롤바 안 보이게
         }}
       />
       <button

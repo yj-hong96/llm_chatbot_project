@@ -56,13 +56,15 @@ body {
   margin-bottom: 3vh;
   padding-left: 1.2rem;
   padding-right: 1.2rem;
-  border-radius: 0.8rem;
+  border-radius: 1.4rem; /* 더 동글동글하게 */
   background-color: transparent;
   cursor: pointer;
+  transition: background-color 0.15s ease-out, box-shadow 0.18s ease-out;
 }
 
 .logo-box:hover {
   background-color: rgba(0, 0, 0, 0.03);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
 }
 
 .logo-text {
@@ -105,8 +107,8 @@ body {
   width: 50vw;
   aspect-ratio: 4 / 3;
   overflow: hidden;
-  border-radius: 0.6rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  border-radius: 1.1rem; /* 더 둥글게 */
+  box-shadow: 0 10px 32px rgba(15, 23, 42, 0.18);
 }
 
 .hero-bg {
@@ -126,9 +128,9 @@ body {
   width: 50vw; /* .hero-image와 동일한 너비 */
   min-width: 450px;
   padding: 1rem 1.4rem;
-  border-radius: 0.6rem;
+  border-radius: 1rem; /* 둥글게 */
   border: none;
-  background-color: #e0e0e0;
+  background-color: #e5e7eb;
   font-size: 1rem;
   cursor: pointer;
   transition: transform 0.1s ease-out, box-shadow 0.1s ease-out,
@@ -137,7 +139,7 @@ body {
 
 .start-chat-btn:hover {
   background-color: #d4d4d4;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.16);
   transform: translateY(-1px);
 }
 
@@ -269,7 +271,7 @@ body {
   border: 1px solid #4a4b51;
   background: #343541;
   color: #f7f7f7;
-  padding: 0.45rem 0.7rem;
+  padding: 0.5rem 0.75rem;
   font-size: 0.85rem;
   cursor: pointer;
   text-align: left;
@@ -393,7 +395,7 @@ body {
   margin-top: 4px;
   margin-bottom: 8px;
   border: 1px solid #e5e7eb;
-  border-radius: 0.6rem;
+  border-radius: 0.9rem; /* 더 동글 */
   padding: 4px 4px 6px;
   background: #fafafa;
 }
@@ -415,8 +417,8 @@ body {
 /* 개별 폴더 아이템 */
 .sidebar-folder-item {
   position: relative;
-  padding: 4px 6px;
-  border-radius: 0.5rem;
+  padding: 5px 7px;
+  border-radius: 0.9rem; /* 둥글게 */
   background: #ffffff;
   border: 1px solid #e5e7eb;
   cursor: pointer;
@@ -444,7 +446,7 @@ body {
 /* 폴더 선택 시 */
 .sidebar-folder-item.selected {
   border-color: #d92c2c;
-  box-shadow: 0 0 0 2px rgba(217, 44, 44, 0.85);
+  box-shadow: 0 0 0 3px rgba(217, 44, 44, 0.18);
   background: #fff5f5;
   transform: translateY(-1px);
 }
@@ -465,7 +467,7 @@ body {
 .sidebar-folder-item.drop-chat .sidebar-folder-header {
   box-shadow: 0 0 0 2px #6366f1 inset;
   background: #eef2ff;
-  border-radius: 0.4rem;
+  border-radius: 0.8rem;
 }
 
 /* 빈 폴더 드롭존 */
@@ -476,7 +478,7 @@ body {
   color: #9ca3af;
   background: #fafafa;
   border: 1px dashed #d1d5db;
-  border-radius: 0.45rem;
+  border-radius: 0.7rem;
 }
 
 .sidebar-folder-item.drop-chat .sidebar-folder-empty-drop,
@@ -510,7 +512,7 @@ body {
   align-items: center;
   gap: 4px;
   padding: 2px 0;
-  border-radius: 0.45rem;
+  border-radius: 0.7rem;
   transition: transform 0.12s ease-out, box-shadow 0.12s ease-out,
     background 0.12s ease-out, opacity 0.12s ease-out;
   overflow: hidden;
@@ -523,8 +525,8 @@ body {
   background: transparent;
   color: #111827;
   font-size: 0.78rem;
-  padding: 2px 4px;
-  border-radius: 0.4rem;
+  padding: 2px 6px;
+  border-radius: 0.7rem;
   cursor: pointer;
   transition: background 0.14s ease-out, transform 0.14s ease-out,
     box-shadow 0.14s ease-out, color 0.14s ease-out;
@@ -563,7 +565,7 @@ body {
   border: 1px dashed #4a4b51;
   background: transparent;
   color: #6b7280;
-  padding: 0.35rem 0.6rem;
+  padding: 0.4rem 0.7rem;
   font-size: 0.78rem;
   cursor: pointer;
   text-align: center;
@@ -581,7 +583,7 @@ body {
   width: 22px;
   height: 22px;
   line-height: 22px;
-  border-radius: 6px;
+  border-radius: 0.7rem;
   border: 1px solid #d1d5db;
   background: #ffffff;
   font-size: 14px;
@@ -625,7 +627,7 @@ body {
   display: flex;
   flex-direction: column;
   border: 1px solid #e5e7eb;
-  border-radius: 0.6rem;
+  border-radius: 0.9rem;
   padding: 4px 4px 6px;
   background: #fafafa;
 }
@@ -656,7 +658,7 @@ body {
   align-items: center;
   margin-bottom: 6px;
   padding: 2px 4px;
-  border-radius: 0.65rem;
+  border-radius: 0.9rem;
   transition: transform 0.12s ease-out, box-shadow 0.12s ease-out,
     background 0.12s ease-out, opacity 0.12s ease-out;
   overflow: hidden;
@@ -672,8 +674,8 @@ body {
   color: #111827;
   text-align: left;
   font-size: 0.82rem;
-  padding: 0.5rem 0.55rem;
-  border-radius: 0.55rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.9rem;
   cursor: pointer;
   min-width: 0;
 }
@@ -745,7 +747,7 @@ body {
   position: fixed;
   background: #111827;
   border: 1px solid #4b5563;
-  border-radius: 0.45rem;
+  border-radius: 0.9rem;
   padding: 4px;
   z-index: 1000;
   display: flex;
@@ -763,14 +765,14 @@ body {
   background: transparent;
   color: #f9fafb;
   font-size: 0.78rem;
-  padding: 4px 8px;
+  padding: 6px 9px;
   cursor: pointer;
   white-space: nowrap;
+  border-radius: 0.7rem;
 }
 
 .sidebar-chat-menu button:hover {
   background: #b3261e;
-  border-radius: 0.35rem;
 }
 
 /* 사이드바 로딩 점 공통 스타일 */
@@ -867,10 +869,10 @@ body {
   align-self: stretch;
   display: flex;
   flex-direction: column;
-  border-radius: 0.9rem;
+  border-radius: 1.4rem; /* 더 동글동글 */
   border: 1px solid #e5e7eb;
   background: #ffffff;
-  box-shadow: none;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
   padding: 1.2rem;
   gap: 0.8rem;
   position: relative;
@@ -906,7 +908,7 @@ body {
 
 .chat-messages:focus-visible {
   box-shadow: inset 0 0 0 2px rgba(58, 122, 254, 0.25);
-  border-radius: 8px;
+  border-radius: 0.8rem;
 }
 
 .chat-container .chat-messages::-webkit-scrollbar {
@@ -918,7 +920,7 @@ body {
 }
 .chat-container .chat-messages::-webkit-scrollbar-thumb {
   background: #cfd5df;
-  border-radius: 8px;
+  border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
@@ -951,7 +953,7 @@ body {
 
 .message {
   max-width: 80%;
-  padding: 0.55rem 0.8rem;
+  padding: 0.6rem 0.9rem;
   font-size: clamp(0.82rem, 1.1vw, 0.9rem);
   line-height: 1.4;
   word-break: break-word;
@@ -960,14 +962,14 @@ body {
 
 .message.bot {
   align-self: flex-start;
-  border-radius: 0.9rem 0.9rem 0.9rem 0.4rem;
+  border-radius: 1.1rem 1.1rem 1.1rem 0.7rem; /* 더 둥글게 */
   border: 1px solid #e2e8f0;
   background: #ffffff;
 }
 
 .message.user {
   align-self: flex-end;
-  border-radius: 0.9rem 0.9rem 0.4rem 0.9rem;
+  border-radius: 1.1rem 1.1rem 0.7rem 1.1rem;
   background: #3a7afe;
   color: #fff;
 }
@@ -979,7 +981,7 @@ body {
   top: -18px;
   font-size: 11px;
   font-weight: 600;
-  padding: 2px 6px;
+  padding: 2px 8px;
   border-radius: 999px;
   line-height: 1;
   opacity: 0.85;
@@ -1063,7 +1065,7 @@ body {
   flex: 1;
   min-width: 0;
   padding: 0.7rem 0.9rem;
-  border-radius: 0.7rem;
+  border-radius: 1rem; /* 더 동글 */
   border: 1px solid #d0d0d0;
   font-size: 0.9rem;
   outline: none;
@@ -1203,7 +1205,7 @@ body {
 .error-modal {
   width: min(480px, 90vw);
   background: #ffffff;
-  border-radius: 1rem;
+  border-radius: 1.3rem; /* 더 둥글게 */
   box-shadow: 0 18px 45px rgba(0, 0, 0, 0.25);
   border: 1px solid #ffd5d5;
   padding: 1.1rem 1.3rem 1rem;
@@ -1305,7 +1307,7 @@ body {
   width: 100%;
   margin-top: 0.5rem;
   padding: 0.45rem 0.6rem;
-  border-radius: 0.5rem;
+  border-radius: 0.7rem;
   border: 1px solid #d1d5db;
   font-size: 0.85rem;
   outline: none;
@@ -1400,20 +1402,17 @@ body {
   visibility: visible;
 }
 
-
-
-
 /* 메뉴 전체 카드 */
 .message-menu {
   position: absolute;
-  top: 32px;           /* 필요하면 위아래 위치 조절 */
+  top: 32px;
   right: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 8px 10px;
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 0.9rem; /* 둥글 */
   box-shadow:
     0 10px 15px -5px rgba(0, 0, 0, 0.08),
     0 4px 6px -2px rgba(0, 0, 0, 0.05);
@@ -1425,11 +1424,11 @@ body {
   border: none;
   background: transparent;
   padding: 6px 12px;
-  border-radius: 999px;      /* pill */
+  border-radius: 999px;
   font-size: 11px;
   line-height: 1.4;
   text-align: left;
-  color: #374151;            /* 진한 회색 */
+  color: #374151;
   cursor: pointer;
   transition:
     background-color 0.15s ease,
@@ -1446,13 +1445,12 @@ body {
 
 /* 삭제 버튼은 살짝 붉은 기운만 */
 .message-menu-item-danger {
-  color: #b91c1c;            /* 부드러운 빨강 */
+  color: #b91c1c;
 }
 
 .message-menu-item-danger:hover {
   background-color: #fef2f2;
 }
-
 
 /* "더 보기" 텍스트 (작게, 회색, 기본 숨김) */
 .message-more-label {
@@ -1515,17 +1513,17 @@ body {
 
 .copy-modal-overlay {
   position: fixed;
-  inset: 0;                 /* top:0; right:0; bottom:0; left:0; */
+  inset: 0;
   display: flex;
-  align-items: center;      /* 세로 가운데 */
-  justify-content: center;  /* 가로 가운데 */
+  align-items: center;
+  justify-content: center;
   background: transparent;
   z-index: 9999;
 }
 
 .copy-modal {
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 1rem;
   padding: 20px 24px 16px;
   min-width: 220px;
   max-width: 280px;
@@ -1581,17 +1579,17 @@ body {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;      /* 기준은 가운데 */
+  justify-content: center;
   padding: 16px 24px 12px;
   background: #ffffff;
-  margin-bottom: 12px;          /* 헤더랑 채팅 카드 사이 간격 */
+  margin-bottom: 12px;
 }
 
 /* 로고 박스: absolute 없애고, 살짝 오른쪽으로 밀기 */
 .chat-page .chat-header .logo-box {
-  position: static !important;       /* inline position:absolute 덮어쓰기 */
+  position: static !important;
   left: auto !important;
-  transform: translateX(40px) !important;  /* 👉 오른쪽으로 40px 이동 */
+  transform: translateX(40px) !important;
   margin: 0;
   display: flex;
   align-items: center;
@@ -1604,11 +1602,10 @@ body {
   right: 24px;
   top: 50%;
   transform: translateY(-50%);
-  margin-left: 0 !important;   /* inline marginLeft: 'auto' 무시 */
+  margin-left: 0 !important;
 }
 
 /* 채팅 카드 안에서 첫 메시지랑 윗부분 살짝 띄우기 */
 .chat-page .chat-container {
   padding-top: 24px;
 }
-
