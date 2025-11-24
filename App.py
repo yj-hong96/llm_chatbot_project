@@ -14,6 +14,8 @@ from langchain_huggingface import HuggingFaceEmbeddings  # HF 임베딩
 from pymilvus import connections, Collection  # Milvus 연결/컬렉션
 from langgraph.graph import StateGraph, END  # 상태 그래프 구성요소
 
+
+
 # --- 1. 로깅 및 초기 설정 ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')  # 표준 로깅 포맷/레벨 설정
 logger = logging.getLogger(__name__)  # 모듈 로거 획득
@@ -369,3 +371,4 @@ if __name__ == "__main__":
                 current_state["messages"].pop()  # 방금 입력 롤백으로 일관성 유지
 
     asyncio.run(chat_loop())  # 이벤트 루프에서 대화 실행
+
