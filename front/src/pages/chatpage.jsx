@@ -362,6 +362,30 @@ function ChatPage() {
       return s;
     });
 
+
+    // ----------------------------- 개별 메시지 삭제
+    const handleDeleteMessage = (messageIndex) => {
+      if (!currentConv) return;
+
+      setChatState((prev) => {
+        const now = Date.now();
+        const updated = (prev.conversations || []).map((conv) => {
+          if (conv.id !== currentConv.id) return conv;
+
+          const newMessages = conv.messages.filter(
+            (_, idx) => idx !== messageIndex
+          );
+
+          return {
+            ...conv,
+            messages: newMessages,
+            updatedAt: now,
+          };
+        });
+
+        return { ...prev, conversations: updated };
+      });
+    };
   // ----------------------------- 데이터/선택/모달/드래그/사이드바 상태
   const [chatState, setChatState] = useState(getInitialChatState);
   const [input, setInput] = useState("");
@@ -2006,6 +2030,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                 openMessageMenuIndex={openMessageMenuIndex}
                 setOpenMessageMenuIndex={setOpenMessageMenuIndex}
                 handleCopyMessage={handleCopyMessage}
+                handleDeleteMessage={handleDeleteMessage}
                 messagesEndRef={messagesEndRef}
               />
 

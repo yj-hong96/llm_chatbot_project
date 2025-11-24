@@ -4,7 +4,7 @@ import React from "react";
 function ChatMessages({
   messages,
   isCurrentPending,
-  loadingPhase, // ✅ 추가된 prop
+  loadingPhase,
   hoveredMessageIndex,
   setHoveredMessageIndex,
   openMessageMenuIndex,
@@ -12,7 +12,6 @@ function ChatMessages({
   handleCopyMessage,
   messagesEndRef,
 }) {
-  // ✅ loadingPhase 값에 따라 다른 문구를 보여주는 함수
   const getLoadingText = () => {
     switch (loadingPhase) {
       case "understanding":
@@ -33,8 +32,8 @@ function ChatMessages({
         const align = isBot ? "flex-start" : "flex-end";
         const bubbleBg = isBot ? "#e6f4ff" : "#fee500";
 
-        const isMenuOpen = openMessageMenuIndex === idx;
         const isHovered = hoveredMessageIndex === idx;
+        const isMenuOpen = openMessageMenuIndex === idx;
 
         return (
           <div
@@ -50,36 +49,62 @@ function ChatMessages({
               setOpenMessageMenuIndex((prev) => (prev === idx ? null : prev));
             }}
           >
+            {/* 한 줄에 말풍선 + 액션바 (봇: 오른쪽, 사용자: 왼쪽) */}
             <div
-              className="chat-message-bubble-wrapper"
               style={{
-                position: "relative",
-                border: "1px solid var(--page-bg, #ffffff)",
-                borderRadius: 16,
-                padding: 6,
+                display: "flex",
+                flexDirection: isBot ? "row" : "row-reverse",
+                alignItems: "flex-start",
                 maxWidth: "80%",
-                background: "var(--page-bg, #ffffff)",
+                gap: 8,
               }}
             >
-              {/* 🔹 모든 메시지(봇 + 사용자)에 메뉴 표시 */}
-              <div className="message-menu-wrapper">
-                <span
-                  className="message-more-label"
+              {/* 말풍선 */}
+              <div
+                className="chat-message-bubble-wrapper"
+                style={{
+                  position: "relative",
+                  border: "1px solid var(--page-bg, #ffffff)",
+                  borderRadius: 16,
+                  padding: 6,
+                  background: "var(--page-bg, #ffffff)",
+                }}
+              >
+                <div
+                  className="message-bubble-content"
                   style={{
-                    opacity: isHovered || isMenuOpen ? 1 : 0,
-                    transform:
-                      isHovered || isMenuOpen
-                        ? "translateY(0)"
-                        : "translateY(4px)",
-                    pointerEvents: "none",
+                    background: bubbleBg,
+                    borderRadius: 16,
+                    padding: "10px 12px",
+                    maxWidth: "100%",
+                    width: "fit-content",
+                    lineHeight: 1.5,
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                    boxShadow: "0 1px 0 rgba(0,0,0,0.04)",
                   }}
                 >
-                  더 보기
-                </span>
+                  {m.text}
+                </div>
+              </div>
 
+              {/* ⋯ / 복사 / 삭제 사이드 액션바 */}
+              <div
+                className="message-actions"
+                style={{
+                  position: "sticky",
+                  top: 10, // 이 값으로 위에서부터 살짝 띄워줌
+                  alignSelf: "flex-start",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                  opacity: isHovered || isMenuOpen ? 1 : 0.4,
+                  transition: "opacity 0.15s ease-out",
+                }}
+              >
+                {/* 항상 보이는 … 버튼 */}
                 <button
                   type="button"
-                  className="message-menu-trigger"
                   onClick={(e) => {
                     e.stopPropagation();
                     setOpenMessageMenuIndex((prev) =>
@@ -87,55 +112,85 @@ function ChatMessages({
                     );
                   }}
                   style={{
-                    opacity: isHovered || isMenuOpen ? 1 : 0,
-                    pointerEvents: isHovered || isMenuOpen ? "auto" : "none",
+                    width: 26,
+                    height: 26,
+                    borderRadius: 999,
+                    border: "none",
+                    backgroundColor: "#f3f4f6",
+                    boxShadow: "0 1px 3px rgba(15,23,42,0.18)",
+                    cursor: "pointer",
+                    fontSize: 16,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
                   ⋯
                 </button>
-              </div>
 
-              {/* 🔹 봇/사용자 공통 메뉴 (복사) */}
-              {isMenuOpen && (
-                <div
-                  className="message-menu"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
-                    type="button"
-                    className="message-menu-item"
-                    onClick={() => {
-                      handleCopyMessage(m.text);
-                      setOpenMessageMenuIndex(null);
+                {/* … 눌렀을 때만 보이는 복사 / 삭제 */}
+                {isMenuOpen && (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 4,
+                      background: "#ffffff",
+                      padding: "4px 6px",
+                      borderRadius: 12,
+                      boxShadow:
+                        "0 12px 24px rgba(15,23,42,0.15), 0 0 0 1px rgba(148,163,184,0.25)",
                     }}
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    복사
-                  </button>
-                </div>
-              )}
-
-              <div
-                className="message-bubble-content"
-                style={{
-                  background: bubbleBg,
-                  borderRadius: 16,
-                  padding: "10px 12px",
-                  maxWidth: "100%",
-                  width: "fit-content",
-                  lineHeight: 1.5,
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                  boxShadow: "0 1px 0 rgba(0,0,0,0.04)",
-                }}
-              >
-                {m.text}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCopyMessage(m.text);
+                        setOpenMessageMenuIndex(null);
+                      }}
+                      style={{
+                        border: "none",
+                        borderRadius: 999,
+                        padding: "4px 10px",
+                        background: "#e5e7eb",
+                        fontSize: 13,
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                        textAlign: "left",
+                      }}
+                    >
+                      복사
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        alert("이 메시지 삭제 기능은 나중에 ChatPage에서 구현하면 돼요 🙂");
+                        setOpenMessageMenuIndex(null);
+                      }}
+                      style={{
+                        border: "none",
+                        borderRadius: 999,
+                        padding: "4px 10px",
+                        background: "#fee2e2",
+                        fontSize: 13,
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                        textAlign: "left",
+                        color: "#b91c1c",
+                      }}
+                    >
+                      삭제
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         );
       })}
 
-      {/* 메인 영역: 챗봇 응답 대기중일 때 로딩 카드 */}
+      {/* 로딩 카드 */}
       {isCurrentPending && (
         <div
           style={{
@@ -172,9 +227,7 @@ function ChatMessages({
                   <span className="dot" />
                 </span>
               </div>
-              <div className="loading-subtext">
-                {getLoadingText()}
-              </div>
+              <div className="loading-subtext">{getLoadingText()}</div>
             </div>
           </div>
         </div>
