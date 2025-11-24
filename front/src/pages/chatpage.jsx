@@ -348,6 +348,8 @@ function ChatPage() {
   const [hoveredMessageIndex, setHoveredMessageIndex] = useState(null);
   const [openMessageMenuIndex, setOpenMessageMenuIndex] = useState(null);
   const [copyToastVisible, setCopyToastVisible] = useState(false);
+  const [loadingPhase, setLoadingPhase] = useState(null);
+  const phaseTimersRef = useRef([]); // ⭐ 로딩 단계 타이머 저장용
 
   // ✅ 폴더별 접힘 상태 관리
   const [collapsedFolderIds, setCollapsedFolderIds] = useState(() => new Set());
@@ -442,6 +444,14 @@ function ChatPage() {
       });
     }
   }, [messages, pendingConvId]);
+
+  // ----------------------------- 컴포넌트 언마운트 시 로딩 타이머 정리
+  useEffect(() => {
+    return () => {
+      phaseTimersRef.current.forEach((id) => clearTimeout(id));
+      phaseTimersRef.current = [];
+    };
+  }, []);
 
   // ----------------------------- 빈 곳 클릭 시 더보기 메뉴 닫기
   useEffect(() => {
@@ -850,7 +860,7 @@ function ChatPage() {
     e.preventDefault();
     e.stopPropagation();
     const convId = draggingId || getDraggedChatId(e);
-    if (!convId) return;
+       if (!convId) return;
 
     setChatState((prev) => ({
       ...prev,
@@ -1186,6 +1196,24 @@ function ChatPage() {
     setMenuOpenId(null);
     setFolderMenuOpenId(null);
 
+    // ⭐ 이전 단계 타이머 모두 초기화
+    phaseTimersRef.current.forEach((id) => clearTimeout(id));
+    phaseTimersRef.current = [];
+
+    // ⭐ 단계별 텍스트 변경: understanding → searching → composing
+    setLoadingPhase("understanding");
+    const t1 = setTimeout(() => {
+      setLoadingPhase((prev) =>
+        prev === "understanding" ? "searching" : prev
+      );
+    }, 900);
+    const t2 = setTimeout(() => {
+      setLoadingPhase((prev) =>
+        prev === "searching" ? "composing" : prev
+      );
+    }, 1800);
+    phaseTimersRef.current.push(t1, t2);
+
     setChatState((prev) => {
       const now = Date.now();
       const updated = (prev.conversations || []).map((conv) => {
@@ -1236,7 +1264,7 @@ function ChatPage() {
         setErrorInfo(info);
       } else {
         const answer = data.answer || "(응답이 없습니다)";
-
+        // 이미 composing 단계로 올라간 상태일 수 있으므로 여기서는 단순히 메시지만 추가
         setChatState((prev) => {
           const now = Date.now();
           const updated = (prev.conversations || []).map((conv) => {
@@ -1272,6 +1300,10 @@ function ChatPage() {
     } finally {
       setLoading(false);
       setPendingConvId(null);
+      // ⭐ 타이머 정리 + 단계 초기화
+      phaseTimersRef.current.forEach((id) => clearTimeout(id));
+      phaseTimersRef.current = [];
+      setLoadingPhase(null);
     }
   };
 
@@ -1491,7 +1523,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           box-shadow:
             0 20px 25px -5px rgba(0, 0, 0, 0.1),
             0 10px 10px -5px rgba(0, 0, 0, 0.04);
-          animation: copyModalFadeIn 0.2s ease-out;
+          animation: copyModalFadeIn 0.2s.ease-out;
         }
         .copy-modal-body {
           font-size: 14px;
@@ -1967,6 +1999,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                 messages={messages}
                 isCurrentPending={isCurrentPending}
                 hoveredMessageIndex={hoveredMessageIndex}
+                loadingPhase={loadingPhase}
                 setHoveredMessageIndex={setHoveredMessageIndex}
                 openMessageMenuIndex={openMessageMenuIndex}
                 setOpenMessageMenuIndex={setOpenMessageMenuIndex}

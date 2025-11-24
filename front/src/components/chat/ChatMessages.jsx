@@ -4,6 +4,7 @@ import React from "react";
 function ChatMessages({
   messages,
   isCurrentPending,
+  loadingPhase, // ✅ 추가된 prop
   hoveredMessageIndex,
   setHoveredMessageIndex,
   openMessageMenuIndex,
@@ -11,6 +12,20 @@ function ChatMessages({
   handleCopyMessage,
   messagesEndRef,
 }) {
+  // ✅ loadingPhase 값에 따라 다른 문구를 보여주는 함수
+  const getLoadingText = () => {
+    switch (loadingPhase) {
+      case "understanding":
+        return "질문의 의도를 파악하고 핵심 내용을 분석하고 있어요.";
+      case "searching":
+        return "관련 자료와 데이터를 검색해서 필요한 정보들을 모으는 중입니다.";
+      case "composing":
+        return "찾아낸 정보를 바탕으로 가장 이해하기 쉬운 형태로 답변을 정리하고 있어요.";
+      default:
+        return "질문을 이해하고, 관련 데이터를 검색한 뒤 가장 알맞은 내용을 정리하고 있습니다. 내용이 복잡할수록 더 정확한 답변을 위해 한 번 더 검토하고 있어요.";
+    }
+  };
+
   return (
     <div className="chat-messages">
       {messages.map((m, idx) => {
@@ -46,43 +61,42 @@ function ChatMessages({
                 background: "var(--page-bg, #ffffff)",
               }}
             >
-              {isBot && (
-                <div className="message-menu-wrapper">
-                  <span
-                    className="message-more-label"
-                    style={{
-                      opacity: isHovered || isMenuOpen ? 1 : 0,
-                      transform:
-                        isHovered || isMenuOpen
-                          ? "translateY(0)"
-                          : "translateY(4px)",
-                      pointerEvents: "none",
-                    }}
-                  >
-                    더 보기
-                  </span>
+              {/* 🔹 모든 메시지(봇 + 사용자)에 메뉴 표시 */}
+              <div className="message-menu-wrapper">
+                <span
+                  className="message-more-label"
+                  style={{
+                    opacity: isHovered || isMenuOpen ? 1 : 0,
+                    transform:
+                      isHovered || isMenuOpen
+                        ? "translateY(0)"
+                        : "translateY(4px)",
+                    pointerEvents: "none",
+                  }}
+                >
+                  더 보기
+                </span>
 
-                  <button
-                    type="button"
-                    className="message-menu-trigger"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenMessageMenuIndex((prev) =>
-                        prev === idx ? null : idx
-                      );
-                    }}
-                    style={{
-                      opacity: isHovered || isMenuOpen ? 1 : 0,
-                      pointerEvents:
-                        isHovered || isMenuOpen ? "auto" : "none",
-                    }}
-                  >
-                    ⋯
-                  </button>
-                </div>
-              )}
+                <button
+                  type="button"
+                  className="message-menu-trigger"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenMessageMenuIndex((prev) =>
+                      prev === idx ? null : idx
+                    );
+                  }}
+                  style={{
+                    opacity: isHovered || isMenuOpen ? 1 : 0,
+                    pointerEvents: isHovered || isMenuOpen ? "auto" : "none",
+                  }}
+                >
+                  ⋯
+                </button>
+              </div>
 
-              {isBot && isMenuOpen && (
+              {/* 🔹 봇/사용자 공통 메뉴 (복사) */}
+              {isMenuOpen && (
                 <div
                   className="message-menu"
                   onClick={(e) => e.stopPropagation()}
@@ -159,8 +173,7 @@ function ChatMessages({
                 </span>
               </div>
               <div className="loading-subtext">
-                질문을 이해하고, 관련 데이터를 검색한 뒤 가장 알맞은 내용을
-                정리하고 있습니다.
+                {getLoadingText()}
               </div>
             </div>
           </div>

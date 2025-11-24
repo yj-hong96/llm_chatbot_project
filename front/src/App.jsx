@@ -4,6 +4,7 @@
 // (홈 화면은 변경 없음. 채팅 페이지만 개선)
 // =========================================================
 
+import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./App.css";
 import HomePage from "./pages/homepage";
