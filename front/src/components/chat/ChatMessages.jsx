@@ -10,6 +10,7 @@ function ChatMessages({
   openMessageMenuIndex,
   setOpenMessageMenuIndex,
   handleCopyMessage,
+  handleDeleteMessage, // ✅ [추가] ChatPage에서 전달받은 삭제 함수
   messagesEndRef,
 }) {
   const getLoadingText = () => {
@@ -165,7 +166,8 @@ function ChatMessages({
                     <button
                       type="button"
                       onClick={() => {
-                        alert("이 메시지 삭제 기능은 나중에 ChatPage에서 구현하면 돼요 🙂");
+                        // ✅ [수정됨] 실제 삭제 함수 호출
+                        handleDeleteMessage(idx);
                         setOpenMessageMenuIndex(null);
                       }}
                       style={{

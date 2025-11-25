@@ -573,6 +573,7 @@ function ChatPage() {
 
       if (confirmDelete) {
         e.preventDefault();
+        // ✅ 여기서 확인 모달의 '예' 버튼을 엔터로 눌렀을 때 삭제 함수 호출
         handleDeleteConversation(confirmDelete.id);
         setConfirmDelete(null);
         return;
@@ -746,10 +747,14 @@ function ChatPage() {
     setIsSearchModalOpen(false);
   };
 
+  // ----------------------------- [중요] 대화 삭제 기능 수정 -----------------------------
   const handleDeleteConversation = (id) => {
     setChatState((prev) => {
       const list = prev.conversations || [];
       const deleteIndex = list.findIndex((c) => c.id === id);
+      // 삭제할 대화가 없으면 리턴
+      if (deleteIndex === -1) return prev;
+
       let filtered = list.filter((c) => c.id !== id);
       let newCurrentId = prev.currentId;
 
@@ -2223,7 +2228,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           style={{ top: menuPosition.y, left: menuPosition.x }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* ✅ [추가] 상세 정보 보기 버튼 */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -2233,9 +2237,11 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           >
             상세 정보
           </button>
+          {/* ✅ 채팅 삭제 버튼 수정 */}
           <button
             onClick={(e) => {
               e.stopPropagation();
+              // 삭제 확인 모달 띄우기
               openDeleteConfirmModal(
                 activeMenuConversation.id,
                 activeMenuConversation.title
@@ -2424,8 +2430,8 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
               <button
                 className="error-modal-primary"
                 onClick={() => {
+                  // ✅ 여기서 실제 삭제 함수 호출
                   handleDeleteConversation(confirmDelete.id);
-                  setConfirmDelete(null);
                 }}
               >
                 예
