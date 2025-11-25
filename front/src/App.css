@@ -130,8 +130,9 @@ select {
   display: block;
 }
 
-/* 채팅 시작하기 버튼 */
-.start-chat-btn {
+/* 채팅 시작하기 & 음성 시작하기 버튼 공통 스타일 */
+.start-chat-btn,
+.start-voice-btn {
   margin-top: 2.5vh;
   text-align: center;
   width: 50vw;
@@ -147,12 +148,15 @@ select {
     background-color 0.15s ease-out;
 }
 
-.start-chat-btn:hover {
+/* 마우스 올렸을 때(Hover) 효과 - 두 버튼 공통 적용 */
+.start-chat-btn:hover,
+.start-voice-btn:hover {
   background-color: #d4d4d4;
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.16);
   transform: translateY(-1px);
 }
 
+/* 모바일 화면용 미디어 쿼리 */
 @media (max-width: 768px) {
   .home-main {
     padding-left: 6vw;
@@ -165,12 +169,14 @@ select {
   .hero-image {
     width: 90vw;
   }
-  .start-chat-btn {
+  
+  /* 모바일에서 버튼 너비 조정 - 두 버튼 공통 적용 */
+  .start-chat-btn,
+  .start-voice-btn {
     width: 70vw;
     min-width: 0;
   }
 }
-
 
 /* =========================================================
    3. [채팅 페이지] 전체 레이아웃 & 사이드바
