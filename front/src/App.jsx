@@ -1,7 +1,9 @@
 // App.jsx
 // =========================================================
 // 메인 라우팅 설정
-// /chat 경로를 기존 ChatPage에서 새로 만든 VoiceChatPage로 변경했습니다.
+// - /           : HomePage
+// - /chat       : ChatPage (텍스트 채팅)
+// - /voice      : VoicechatPage (음성 채팅)
 // =========================================================
 
 import React from "react";
@@ -10,7 +12,8 @@ import "./App.css";
 
 // 페이지 컴포넌트 임포트
 import HomePage from "./pages/homepage";
-import VoiceChatPage from "./pages/VoiceChatPage"; // 변경됨: ChatPage -> VoiceChatPage
+import ChatPage from "./pages/chatpage";
+import VoicechatPage from "./pages/Voicechatpage"; // 파일명: Voicechatpage.jsx
 
 function App() {
   return (
@@ -18,9 +21,12 @@ function App() {
       <Routes>
         {/* 홈 페이지 */}
         <Route path="/" element={<HomePage />} />
-        
-        {/* 채팅 페이지 (음성/텍스트 통합) */}
-        <Route path="/chat" element={<VoiceChatPage />} />
+
+        {/* 텍스트 채팅 페이지 */}
+        <Route path="/chat" element={<ChatPage />} />
+
+        {/* 음성 채팅 페이지 */}
+        <Route path="/voice" element={<VoicechatPage />} />
       </Routes>
     </BrowserRouter>
   );
