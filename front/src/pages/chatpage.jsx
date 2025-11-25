@@ -17,10 +17,10 @@ const SIDEBAR_MAX_WIDTH = 360;
 const SIDEBAR_INIT_WIDTH = 220;
 
 // ---------------------------------------------------------
-// 유틸: 날짜 포맷팅 (YYYY. MM. DD. HH:mm) - [추가됨]
+// 유틸: 날짜 포맷팅 (YYYY. MM. DD. HH:mm)
 // ---------------------------------------------------------
 function formatDateTime(timestamp) {
-  if (!timestamp) return "";
+  if (!timestamp) return "-";
   const date = new Date(timestamp);
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -423,6 +423,7 @@ function ChatPage() {
   const [folderMenuOpenId, setFolderMenuOpenId] = useState(null);
   const [folderMenuPosition, setFolderMenuPosition] = useState(null);
 
+  // 모달 상태들
   const [confirmDelete, setConfirmDelete] = useState(null); // {id, title}
   const [renameInfo, setRenameInfo] = useState(null); // {id, value}
   const [confirmFolderDelete, setConfirmFolderDelete] = useState(null);
@@ -430,6 +431,9 @@ function ChatPage() {
   const [newFolderName, setNewFolderName] = useState("");
   const [folderRenameInfo, setFolderRenameInfo] = useState(null);
   const [pendingFolderConvId, setPendingFolderConvId] = useState(null);
+
+  // ⭐ [추가] 상세 정보 모달 상태 (현재 보고 있는 채팅 객체 저장)
+  const [detailsModalChat, setDetailsModalChat] = useState(null);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -561,6 +565,8 @@ function ChatPage() {
         setFolderMenuOpenId(null);
         setIsSearchModalOpen(false);
         setOpenMessageMenuIndex(null);
+        // 상세 정보 모달 닫기
+        setDetailsModalChat(null);
         return;
       }
       if (e.key !== "Enter") return;
@@ -600,7 +606,8 @@ function ChatPage() {
       menuOpenId ||
       folderMenuOpenId ||
       folderCreateModalOpen ||
-      isSearchModalOpen
+      isSearchModalOpen ||
+      detailsModalChat
     ) {
       window.addEventListener("keydown", onKey);
       return () => window.removeEventListener("keydown", onKey);
@@ -616,6 +623,7 @@ function ChatPage() {
     folderMenuOpenId,
     folderCreateModalOpen,
     isSearchModalOpen,
+    detailsModalChat,
   ]);
 
   // ----------------------------- Delete 키: focusArea
@@ -1418,7 +1426,16 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
   return (
     <div className="page chat-page">
       {/* 검색 모달 + 로딩/복사 모달 전용 스타일 */}
+      {/* ✅ 구글 폰트 추가 및 전역 폰트 강제 적용 스타일 */}
       <style>{`
+        /* 구글 폰트 불러오기 (Noto Sans KR) */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+        /* 페이지 전체에 부드러운 고딕 폰트 적용 */
+        body, button, input, textarea, .chat-page, .chat-shell, .chat-sidebar {
+          font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif !important;
+        }
+
         .sidebar-search-trigger {
           width: calc(100% - 24px);
           margin: 0 12px 12px 12px;
@@ -1506,7 +1523,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           margin-right: 12px;
           color: #9ca3af;
         }
-        /* ✅ 수정: 제목이 남은 공간 차지 + 말줄임표 처리 */
         .search-result-text {
           font-size: 14px;
           color: #374151;
@@ -1515,7 +1531,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           text-overflow: ellipsis;
           white-space: nowrap;
         }
-        /* ✅ 추가: 날짜 스타일 (우측 정렬, 작은 글씨) */
         .search-result-date {
           font-size: 12px;
           color: #9aa0a6;
@@ -1621,6 +1636,53 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
             opacity: 1;
             transform: translateY(0) scale(1);
           }
+        }
+
+        /* ===== 상세 정보 모달 스타일 추가 ===== */
+        .details-modal {
+          width: min(520px, 90vw);
+          background: #ffffff;
+          border-radius: 16px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+          border: 1px solid #e5e7eb;
+          padding: 24px;
+          animation: modalFadeIn 0.2s ease-out;
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+        .details-section-title {
+          font-size: 14px;
+          font-weight: 600;
+          color: #374151;
+          margin-bottom: 10px;
+          border-bottom: 2px solid #f3f4f6;
+          padding-bottom: 6px;
+        }
+        .details-grid {
+          display: grid;
+          grid-template-columns: 100px 1fr;
+          gap: 8px 12px;
+          font-size: 13px;
+        }
+        .details-label {
+          color: #6b7280;
+          font-weight: 500;
+        }
+        .details-value {
+          color: #111827;
+          word-break: break-all;
+        }
+        .details-preview-box {
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          padding: 12px;
+          font-size: 13px;
+          color: #4b5563;
+          line-height: 1.5;
+          max-height: 120px;
+          overflow-y: auto;
         }
       `}</style>
 
@@ -2143,7 +2205,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                   >
                     <div className="search-result-icon">💬</div>
                     <div className="search-result-text">{conv.title}</div>
-                    {/* ✅ 수정: 날짜 표시 추가 */}
                     <div className="search-result-date">
                       {formatDateTime(conv.updatedAt)}
                     </div>
@@ -2162,6 +2223,16 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           style={{ top: menuPosition.y, left: menuPosition.x }}
           onClick={(e) => e.stopPropagation()}
         >
+          {/* ✅ [추가] 상세 정보 보기 버튼 */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setDetailsModalChat(activeMenuConversation);
+              setMenuOpenId(null);
+            }}
+          >
+            상세 정보
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -2228,6 +2299,96 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           >
             폴더 삭제
           </button>
+        </div>
+      )}
+
+      {/* ===== 상세 정보 모달 (NEW) ===== */}
+      {detailsModalChat && (
+        <div
+          className="error-modal-overlay"
+          onClick={(e) => {
+            if (e.target.classList.contains("error-modal-overlay")) {
+              setDetailsModalChat(null);
+            }
+          }}
+        >
+          <div className="details-modal" role="dialog" aria-modal="true">
+            <div className="error-modal-header">
+              <span className="error-modal-title">대화 상세 정보</span>
+              <button
+                className="error-modal-close"
+                onClick={() => setDetailsModalChat(null)}
+                aria-label="닫기"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 정보 구역 */}
+            <div>
+              <div className="details-section-title">기본 정보</div>
+              <div className="details-grid">
+                <span className="details-label">제목</span>
+                <span className="details-value">{detailsModalChat.title}</span>
+
+                <span className="details-label">생성일</span>
+                <span className="details-value">
+                  {formatDateTime(detailsModalChat.createdAt)}
+                </span>
+
+                <span className="details-label">마지막 활동</span>
+                <span className="details-value">
+                  {formatDateTime(detailsModalChat.updatedAt)}
+                </span>
+
+                <span className="details-label">ID</span>
+                <span className="details-value">{detailsModalChat.id}</span>
+
+                <span className="details-label">메시지 수</span>
+                <span className="details-value">
+                  {detailsModalChat.messages?.length || 0}개
+                </span>
+
+                {detailsModalChat.folderId && (
+                  <>
+                    <span className="details-label">폴더</span>
+                    <span className="details-value">
+                      {folders.find((f) => f.id === detailsModalChat.folderId)?.name ||
+                        "삭제된 폴더"}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* 채팅 요약/미리보기 구역 - 전체 내용 표시 */}
+            <div>
+              <div className="details-section-title">대화 전체 내용</div>
+              <div className="details-preview-box">
+                {detailsModalChat.messages && detailsModalChat.messages.length > 0 ? (
+                  detailsModalChat.messages.map((msg, index) => (
+                    <div key={index} style={{ marginBottom: "6px" }}>
+                      <strong style={{ marginRight: "4px" }}>
+                        {msg.role === "user" ? "👤 나" : "🤖 AI"}:
+                      </strong>
+                      <span>{msg.text}</span>
+                    </div>
+                  ))
+                ) : (
+                  "(대화 내용 없음)"
+                )}
+              </div>
+            </div>
+
+            <div className="error-modal-footer">
+              <button
+                className="error-modal-secondary"
+                onClick={() => setDetailsModalChat(null)}
+              >
+                닫기
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
