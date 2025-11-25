@@ -17,6 +17,20 @@ const SIDEBAR_MAX_WIDTH = 360;
 const SIDEBAR_INIT_WIDTH = 220;
 
 // ---------------------------------------------------------
+// 유틸: 날짜 포맷팅 (YYYY. MM. DD. HH:mm) - [추가됨]
+// ---------------------------------------------------------
+function formatDateTime(timestamp) {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${year}. ${month}. ${day}. ${hour}:${min}`;
+}
+
+// ---------------------------------------------------------
 // 유틸: 새 대화(기본 인사 포함) 생성
 // ---------------------------------------------------------
 function createNewConversation() {
@@ -1492,9 +1506,22 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           margin-right: 12px;
           color: #9ca3af;
         }
+        /* ✅ 수정: 제목이 남은 공간 차지 + 말줄임표 처리 */
         .search-result-text {
           font-size: 14px;
           color: #374151;
+          flex: 1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        /* ✅ 추가: 날짜 스타일 (우측 정렬, 작은 글씨) */
+        .search-result-date {
+          font-size: 12px;
+          color: #9aa0a6;
+          margin-left: 12px;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
         .search-empty-state {
           padding: 32px;
@@ -2116,6 +2143,10 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                   >
                     <div className="search-result-icon">💬</div>
                     <div className="search-result-text">{conv.title}</div>
+                    {/* ✅ 수정: 날짜 표시 추가 */}
+                    <div className="search-result-date">
+                      {formatDateTime(conv.updatedAt)}
+                    </div>
                   </div>
                 ))
               )}
