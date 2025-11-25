@@ -1,5 +1,5 @@
 // src/components/chat/ChatMessages.jsx
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 // ✅ 간단한 시간 포맷팅 함수
 function formatTime(timestamp) {
@@ -19,6 +19,16 @@ function ChatMessages({
   handleDeleteMessage,
   messagesEndRef,
 }) {
+  // 🔊 현재 읽고 있는 메시지의 인덱스 (없으면 null)
+  const [speakingIdx, setSpeakingIdx] = useState(null);
+
+  // 컴포넌트가 언마운트될 때(화면이 바뀔 때) 음성 중단
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
   const getLoadingText = () => {
     switch (loadingPhase) {
       case "understanding":
@@ -32,8 +42,8 @@ function ChatMessages({
     }
   };
 
-  // ✅ [수정됨] TTS (음성 듣기) 함수 : 한국어 음성 강제 찾기 적용
-  const handleSpeak = (text) => {
+  // ✅ TTS (음성 듣기) 함수
+  const handleSpeak = (text, idx) => {
     const synth = window.speechSynthesis;
 
     if (!synth) {
@@ -41,38 +51,36 @@ function ChatMessages({
       return;
     }
 
-    // 기존 음성 중단 (겹침 방지)
+    // 기존 음성 중단
     synth.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.1; // 속도
-    utterance.pitch = 1.2; // 톤
-    utterance.volume = 1.0; // 볼륨
+    utterance.rate = 1.0; 
+    utterance.pitch = 1.1; 
+    utterance.volume = 1.0; 
 
-    // 1. 사용 가능한 음성 목록 가져오기
+    // 읽기 시작하면 상태 업데이트
+    setSpeakingIdx(idx);
+
+    // 읽기가 끝나거나 에러가 나면 상태 초기화
+    utterance.onend = () => setSpeakingIdx(null);
+    utterance.onerror = () => setSpeakingIdx(null);
+
+    // 한국어 음성 찾기 및 설정
     let voices = synth.getVoices();
-
-    // 2. 한국어 음성 찾기 함수
     const setKoreanVoice = () => {
-      // 'ko-KR', 'ko_KR', 'Korean' 등이 포함된 음성 찾기 (구글 한국어, MS 한국어 등)
       const korVoice = voices.find(
         (v) => v.lang.includes("ko") || v.name.includes("Korean") || v.name.includes("한국어")
       );
-
-      // 한국어 음성이 있으면 설정
       if (korVoice) {
         utterance.voice = korVoice;
         utterance.lang = korVoice.lang;
       } else {
-        // 없으면 lang만이라도 설정 (OS 기본값 시도)
         utterance.lang = "ko-KR";
-        console.warn("한국어 음성 팩을 찾을 수 없어 기본 설정으로 시도합니다.");
       }
-
       synth.speak(utterance);
     };
 
-    // 3. 음성 목록이 아직 안 로드되었을 경우 (Chrome 이슈 대응)
     if (voices.length === 0) {
       synth.onvoiceschanged = () => {
         voices = synth.getVoices();
@@ -81,6 +89,24 @@ function ChatMessages({
     } else {
       setKoreanVoice();
     }
+  };
+
+  // ✅ TTS 중단 함수
+  const handleStopSpeak = () => {
+    window.speechSynthesis.cancel();
+    setSpeakingIdx(null);
+  };
+
+  // 삭제 처리 함수 (삭제 시 음성도 중단)
+  const onDeleteClick = (idx) => {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    if (speakingIdx === idx) {
+      setSpeakingIdx(null);
+    }
+    handleDeleteMessage(idx);
+    setOpenMessageMenuIndex(null);
   };
 
   return (
@@ -93,6 +119,7 @@ function ChatMessages({
 
         const isHovered = hoveredMessageIndex === idx;
         const isMenuOpen = openMessageMenuIndex === idx;
+        const isSpeakingThis = speakingIdx === idx; // 현재 이 메시지를 읽고 있는지 여부
 
         return (
           <div
@@ -173,7 +200,7 @@ function ChatMessages({
                 {formatTime(m.createdAt || Date.now())}
               </div>
 
-              {/* ⋯ / 복사 / 삭제 / 듣기 사이드 액션바 */}
+              {/* ⋯ / 복사 / 삭제 / 듣기 / 중지 버튼 영역 */}
               <div
                 className="message-actions"
                 style={{
@@ -182,40 +209,68 @@ function ChatMessages({
                   display: "flex",
                   flexDirection: "column",
                   gap: 4,
-                  opacity: isHovered || isMenuOpen ? 1 : 0,
+                  // 읽고 있을 때는 항상 보이게 (중지 버튼 때문)
+                  opacity: isHovered || isMenuOpen || isSpeakingThis ? 1 : 0,
                   transition: "opacity 0.2s ease",
-                  visibility: isHovered || isMenuOpen ? "visible" : "hidden",
+                  visibility: isHovered || isMenuOpen || isSpeakingThis ? "visible" : "hidden",
                 }}
               >
-                {/* 메뉴 트리거 버튼 */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenMessageMenuIndex((prev) =>
-                      prev === idx ? null : idx
-                    );
-                  }}
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: "50%",
-                    border: "1px solid #e5e7eb",
-                    backgroundColor: "#ffffff",
-                    color: "#6b7280",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 14,
-                  }}
-                  title="더보기"
-                >
-                  ⋯
-                </button>
+                {/* ✅ [추가] 읽고 있을 때는 '중지' 버튼 표시, 아니면 '...' 메뉴 버튼 */}
+                {isSpeakingThis ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStopSpeak();
+                    }}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      border: "1px solid #fca5a5", // 붉은 테두리
+                      backgroundColor: "#fef2f2",
+                      color: "#ef4444",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 12,
+                      animation: "pulse 1.5s infinite",
+                    }}
+                    title="읽기 중지"
+                  >
+                    ⏹
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenMessageMenuIndex((prev) =>
+                        prev === idx ? null : idx
+                      );
+                    }}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      border: "1px solid #e5e7eb",
+                      backgroundColor: "#ffffff",
+                      color: "#6b7280",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 14,
+                    }}
+                    title="더보기"
+                  >
+                    ⋯
+                  </button>
+                )}
 
                 {/* 메뉴 팝업 */}
-                {isMenuOpen && (
+                {isMenuOpen && !isSpeakingThis && (
                   <div
                     style={{
                       position: "absolute",
@@ -239,7 +294,7 @@ function ChatMessages({
                       <button
                         type="button"
                         onClick={() => {
-                          handleSpeak(m.text);
+                          handleSpeak(m.text, idx); // idx 전달
                           setOpenMessageMenuIndex(null);
                         }}
                         style={{
@@ -285,10 +340,7 @@ function ChatMessages({
                     {idx !== 0 && (
                       <button
                         type="button"
-                        onClick={() => {
-                          handleDeleteMessage(idx);
-                          setOpenMessageMenuIndex(null);
-                        }}
+                        onClick={() => onDeleteClick(idx)}
                         style={{
                           border: "none",
                           borderRadius: 6,
@@ -313,7 +365,7 @@ function ChatMessages({
         );
       })}
 
-      {/* 로딩 상태 표시 (봇 아바타 포함) */}
+      {/* 로딩 상태 표시 */}
       {isCurrentPending && (
         <div
           style={{
@@ -371,6 +423,15 @@ function ChatMessages({
       )}
 
       <div ref={messagesEndRef} />
+      
+      {/* 중지 버튼 깜빡임 애니메이션 */}
+      <style>{`
+        @keyframes pulse {
+          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+          70% { transform: scale(1.05); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+      `}</style>
     </div>
   );
 }
