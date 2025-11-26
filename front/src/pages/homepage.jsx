@@ -15,29 +15,27 @@ function HomePage() {
   // 새 텍스트 채팅 시작
   const handleStartChat = useCallback(() => {
     try {
-      // 필요하면 기존 텍스트 대화 초기화
+      // 기존 텍스트 대화 초기화
       localStorage.removeItem(CHAT_STORAGE_KEY);
     } catch (e) {
       console.error("채팅 대화 초기화 중 오류:", e);
     }
 
-    // ChatPage에서 location.state.newChat 보고 새 대화 시작
+    // ChatPage로 이동
     navigate("/chat", { state: { newChat: true } });
   }, [navigate]);
 
   // 새 음성 채팅 시작
   const handleStartVoice = useCallback(() => {
     try {
-      // 필요하면 기존 음성 대화 초기화
+      // ✅ 기존 음성 대화 목록을 확실하게 삭제 (이래야 목록이 비워진 상태로 시작)
       localStorage.removeItem(VOICE_STORAGE_KEY);
     } catch (e) {
       console.error("음성 대화 초기화 중 오류:", e);
     }
 
-    // ✅ 여기서는 TTS를 직접 안 쓰고,
-    // ✅ VoiceChatPage에서 location.state.newChat을 보고
-    //    handleNewChat() + speak(...)를 실행하게 함
-    navigate("/voice", { state: { newChat: true } });
+    // ✅ VoiceChatPage로 이동하면서 'autoPlay: true' 신호를 보냄
+    navigate("/voice", { state: { newChat: true, autoPlay: true } });
   }, [navigate]);
 
   return (

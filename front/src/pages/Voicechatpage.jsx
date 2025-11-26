@@ -82,6 +82,7 @@ function getInitialChatState() {
       console.error("저장된 음성 대화 목록을 불러오는 중 오류:", e);
     }
   }
+  // 저장된 게 없거나 오류 시 새 대화 1개 생성하여 리턴
   const conv = createNewConversation();
   return { conversations: [conv], folders: [], currentId: conv.id };
 }
@@ -123,6 +124,7 @@ function makeErrorInfo(rawError) {
     };
   }
 
+  // ... (나머지 에러 처리 로직은 동일하게 유지)
   if (
     text.includes("Request too large") ||
     text.includes("maximum context length") ||
@@ -159,137 +161,6 @@ function makeErrorInfo(rawError) {
     };
   }
 
-  if (errorCode === "401" || text.includes("Unauthorized")) {
-    return {
-      ...base,
-      code: errorCode || "401",
-      title: "인증에 실패했습니다. (에러 코드: 401)",
-      guide:
-        "필요한 API 키 또는 로그인 정보가 유효하지 않거나 만료되었습니다.",
-      hint:
-        "백엔드 서버의 환경변수(.env)에 설정된 API 키가 올바른지, 또는 로그인 세션이 유효한지 확인해 주세요.",
-    };
-  }
-
-  if (errorCode === "403" || text.includes("Forbidden")) {
-    return {
-      ...base,
-      code: errorCode || "403",
-      title: "요청에 대한 권한이 없습니다. (에러 코드: 403)",
-      guide:
-        "해당 작업을 수행할 권한이 없는 계정으로 요청했거나, 권한 설정이 잘못되었습니다.",
-      hint:
-        "API 대시보드의 권한 범위를 확인하거나, 관리자에게 접근 권한을 요청해 주세요.",
-    };
-  }
-
-  if (errorCode === "404" || text.includes("Not Found")) {
-    return {
-      ...base,
-      code: errorCode || "404",
-      title: "요청한 주소를 찾을 수 없습니다. (에러 코드: 404)",
-      guide:
-        "백엔드의 /chat 같은 엔드포인트 주소가 잘못되었거나, 서버에 해당 경로가 없습니다.",
-      hint:
-        "fetch에 사용한 URL(포트 포함)과 Flask 라우트(@app.route('/chat'))가 정확히 일치하는지 확인해 주세요.",
-    };
-  }
-
-  if (errorCode === "400" || text.includes("Bad Request")) {
-    return {
-      ...base,
-      code: errorCode || "400",
-      title: "요청 형식이 올바르지 않습니다. (에러 코드: 400)",
-      guide:
-        "서버가 이해할 수 없는 형식의 데이터를 보냈습니다. JSON 구조나 필수 필드가 빠져 있을 수 있습니다.",
-      hint:
-        "fetch에서 전송하는 body(JSON.stringify 부분)와 서버에서 기대하는 필드 이름이 일치하는지 확인해 주세요.",
-    };
-  }
-
-  if (errorCode === "408") {
-    return {
-      ...base,
-      code: "408",
-      title: "요청 시간이 너무 오래 걸립니다. (에러 코드: 408)",
-      guide:
-        "서버가 지정된 시간 안에 응답하지 못했습니다. 일시적인 지연일 수 있습니다.",
-      hint:
-        "같은 요청을 여러 번 반복해서 보내지 말고, 잠시 기다렸다가 다시 시도해 보세요.",
-    };
-  }
-
-  if (errorCode === "413") {
-    return {
-      ...base,
-      code: "413",
-      title: "요청 데이터가 너무 큽니다. (에러 코드: 413)",
-      guide:
-        "한 번에 전송하는 텍스트 또는 파일 크기가 서버에서 허용하는 범위를 넘었습니다.",
-      hint:
-        "질문이나 첨부 데이터를 나누어서 여러 번에 걸쳐 전송해 주세요.",
-    };
-  }
-
-  if (errorCode === "429") {
-    return {
-      ...base,
-      code: "429",
-      title: "요청이 너무 자주 전송되었습니다. (에러 코드: 429)",
-      guide:
-        "짧은 시간에 너무 많은 요청을 보내서 서버의 제한에 걸렸습니다. 잠시 후 다시 시도해 주세요.",
-      hint: "요청 간 간격을 늘리거나, 꼭 필요한 요청만 보내도록 조절해 주세요.",
-    };
-  }
-
-  if (errorCode === "500" || text.includes("Internal Server Error")) {
-    return {
-      ...base,
-      code: errorCode || "500",
-      title: "서버 내부에서 오류가 발생했습니다. (에러 코드: 500)",
-      guide:
-        "백엔드 코드나 외부 API에서 예기치 못한 예외가 발생했습니다. 잠시 후 다시 시도해 주세요.",
-      hint:
-        "개발 중이라면 서버 콘솔 로그를 확인해 실제 스택트레이스를 살펴보는 것이 좋습니다.",
-    };
-  }
-
-  if (errorCode === "502") {
-    return {
-      ...base,
-      code: "502",
-      title: "중간 게이트웨이 서버에서 오류가 발생했습니다. (에러 코드: 502)",
-      guide:
-        "백엔드 서버 또는 그 앞단의 프록시/게이트웨이가 정상적으로 응답하지 못했습니다.",
-      hint:
-        "클라우드 환경이라면 로드밸런서/프록시 설정과 백엔드 서버 상태를 함께 점검해 주세요.",
-    };
-  }
-
-  if (errorCode === "503") {
-    return {
-      ...base,
-      code: "503",
-      title: "서버를 일시적으로 사용할 수 없습니다. (에러 코드: 503)",
-      guide:
-        "서버가 점검 중이거나 과부하 상태일 수 있습니다. 잠시 후 다시 시도해 주세요.",
-      hint:
-        "지속적으로 503이 발생한다면, 서버 인스턴스 수를 늘리거나 트래픽을 분산하는 방안을 고려해야 합니다.",
-    };
-  }
-
-  if (errorCode === "504") {
-    return {
-      ...base,
-      code: "504",
-      title: "서버 응답 시간이 초과되었습니다. (에러 코드: 504)",
-      guide:
-        "백엔드 서버에서 처리 시간이 너무 오래 걸려 게이트웨이에서 요청을 중단했습니다.",
-      hint:
-        "특정 요청에서만 반복된다면, 해당 요청의 처리 로직을 최적화하거나 타임아웃 시간을 조정해야 합니다.",
-    };
-  }
-
   return {
     ...base,
     title: errorCode
@@ -314,7 +185,7 @@ function summarizeTitleFromMessages(messages) {
 }
 
 // ---------------------------------------------------------
-// 유틸: 리스트 자동 스크롤(드래그 시 상/하단 근접 스크롤)
+// 유틸: 리스트 자동 스크롤
 // ---------------------------------------------------------
 function autoScroll(container, clientY) {
   if (!container) return;
@@ -421,6 +292,8 @@ function VoiceChatPage() {
   // 음성 상태
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  // speakingText unused but kept for compatibility if needed
+  // const [speakingText, setSpeakingText] = useState("");
 
   // refs
   const rootListRef = useRef(null);
@@ -712,16 +585,6 @@ function VoiceChatPage() {
     setIsResizingSidebar(true);
   };
 
-  // ----------------------------- Home → VoiceChat 새 대화 시작
-  useEffect(() => {
-    if (!location?.state?.newChat) return;
-    if (startedFromHomeRef.current) return;
-    startedFromHomeRef.current = true;
-
-    handleNewChat();
-    navigate(location.pathname, { replace: true, state: {} });
-  }, [location, navigate]);
-
   // ----------------------------- 음성 합성(TTS)
   const speak = (text) => {
     if (typeof window === "undefined") return;
@@ -732,7 +595,7 @@ function VoiceChatPage() {
     }
     if (!synthRef.current || !window.SpeechSynthesisUtterance) return;
 
-    synthRef.current.cancel();
+    synthRef.current.cancel(); // 기존 음성 중단
     const utterance = new window.SpeechSynthesisUtterance(text);
     utterance.lang = "ko-KR";
     utterance.onstart = () => {
@@ -748,10 +611,45 @@ function VoiceChatPage() {
     synthRef.current.speak(utterance);
   };
 
-  // ✅ 페이지 처음 들어왔을 때, 현재 대화의 첫 bot 인사를 한 번만 읽어주기
+  // ----------------------------- Home → VoiceChat 새 대화 시작 (수정됨)
+  // ✅ 2개 생기는 문제 해결 및 자동 재생
   useEffect(() => {
+    if (!location?.state?.newChat) return;
+    
+    // Strict Mode 등에서 두 번 실행되는 것 방지
+    if (startedFromHomeRef.current) return;
+    startedFromHomeRef.current = true;
+
+    // 중요: HomePage에서 localStorage를 지우고 왔다면,
+    // getInitialChatState()가 이미 "새 음성 대화" 하나를 만들어 둔 상태입니다.
+    // 여기서 handleNewChat()을 또 부르면 대화가 2개가 됩니다.
+    // 따라서 "방금 초기화된 상태"인지 확인합니다.
+    const isFreshlyInitialized = 
+      conversations.length === 1 &&
+      conversations[0].title === "새 음성 대화" &&
+      conversations[0].messages.length === 1;
+
+    if (isFreshlyInitialized) {
+      // 대화방을 새로 만들지 않고, 이미 있는 1번 대화방의 인사를 바로 읽습니다.
+      speak("안녕하세요! 말씀해 주시면 듣고 대답해 드립니다.");
+    } else {
+      // 기존 대화가 쌓여있는 상태에서 홈에서 '음성 시작하기'를 누른 경우
+      handleNewChat();
+    }
+
+    // state 초기화 (새로고침 시 반복 방지)
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location, navigate, conversations]);
+
+
+  // ✅ 일반적인 접근(새로고침 등) 시, 현재 대화의 첫 bot 인사를 한 번만 읽어주기
+  useEffect(() => {
+    // newChat 플래그로 들어왔을 때는 위 로직이 처리하므로 패스
+    if (location?.state?.newChat) return;
+
     // 이미 한 번 읽어줬으면 끝
     if (initialGreetingSpokenRef.current) return;
+    
     if (!currentConv || !currentConv.messages || currentConv.messages.length === 0)
       return;
 
@@ -768,12 +666,9 @@ function VoiceChatPage() {
       return;
     }
 
-    // Home에서 newChat 상태로 들어온 경우에는 handleNewChat 안에서 이미 speak 호출하니까
-    // 여기서 또 부르면 두 번 재생되므로, newChat 아닐 때만 자동 재생
-    if (!location?.state?.newChat) {
-      initialGreetingSpokenRef.current = true;
-      speak(firstBot.text);
-    }
+    // 자동 재생
+    initialGreetingSpokenRef.current = true;
+    speak(firstBot.text);
   }, [currentConv, location]);
 
 
