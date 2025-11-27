@@ -1169,20 +1169,35 @@ function VoiceChatPage() {
     if (el) autoScroll(el, e.clientY);
   };
 
-  const handleDropChatOnFolderHeader = (e, folderId) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const convId = draggingId || getDraggedChatId(e);
-    if (!convId) return;
+const handleDropChatOnFolderHeader = (e, folderId) => {
+  e.preventDefault();
+  e.stopPropagation();
 
-    setChatState((prev) => ({
-      ...prev,
-      conversations: (prev.conversations || []).map((c) =>
-        c.id === convId ? { ...c, folderId } : c
-      ),
-    }));
+  const convId = draggingId || getDraggedChatId(e);
+  if (!convId) {
     setDraggingId(null);
-  };
+    setDragOverId(null);
+    setDragOverFolderId(null);
+    setFolderDraggingId(null);
+    setFolderDragOverId(null);
+    return;
+  }
+
+  setChatState((prev) => ({
+    ...prev,
+    conversations: (prev.conversations || []).map((c) =>
+      c.id === convId ? { ...c, folderId } : c
+    ),
+  }));
+
+  // ✅ 드롭 후에는 드래그 상태 모두 초기화
+  setDraggingId(null);
+  setDragOverId(null);
+  setDragOverFolderId(null);
+  setFolderDraggingId(null);
+  setFolderDragOverId(null);
+};
+
   const handleFolderDrop = (e, folderId) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1201,9 +1216,11 @@ function VoiceChatPage() {
         return { ...prev, folders: list };
       });
 
+      setDraggingId(null);
+      setDragOverId(null);
+      setDragOverFolderId(null);
       setFolderDraggingId(null);
       setFolderDragOverId(null);
-      setDragOverFolderId(null);
       return;
     }
 
@@ -1237,8 +1254,11 @@ function VoiceChatPage() {
         c.id === id ? { ...c, folderId: null } : c
       ),
     }));
+    // ✅ 메뉴/폴더 상태 정리
     setMenuOpenId(null);
     setFolderMenuOpenId(null);
+
+    // ✅ 포커스는 채팅 영역으로
     setFocusArea("chat");
   };
 
@@ -1316,6 +1336,9 @@ function VoiceChatPage() {
       list.splice(insertIndex, 0, moved);
       return { ...prev, conversations: list };
     });
+
+    setSelectedFolderId(null);
+    setFocusArea("chat");
 
     setDraggingId(null);
     setDragOverId(null);
@@ -1453,6 +1476,9 @@ function VoiceChatPage() {
 
       return { ...prev, conversations: list };
     });
+
+    setSelectedFolderId(null);
+    setFocusArea("chat");
 
     setDraggingId(null);
     setDragOverId(null);
@@ -2180,23 +2206,27 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                           </div>
                         </div>
 
-                        {childConvs.length === 0 && (
-                          <div
-                            className={
-                              "sidebar-folder-empty-drop" +
-                              (dragOverFolderId === folder.id ? " drop-chat" : "")
-                            }
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              setDragOverFolderId(folder.id);
-                            }}
-                            onDrop={(e) =>
-                              handleDropChatOnFolderHeader(e, folder.id)
-                            }
-                          >
-                            대화 없음 — 여기로 드롭
-                          </div>
-                        )}
+                            {childConvs.length === 0 && (
+                              <div
+                                className={
+                                  "sidebar-folder-empty-drop" +
+                                  (dragOverFolderId === folder.id ? " drop-chat" : "")
+                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedFolderId(folder.id);
+                                  setFocusArea("folder");
+                                }}
+                                onDragOver={(e) => {
+                                  e.preventDefault();
+                                  setDragOverFolderId(folder.id);
+                                }}
+                                onDrop={(e) => handleDropChatOnFolderHeader(e, folder.id)}
+                              >
+                                대화 없음 — 여기로 드롭
+                              </div>
+                            )}
+
 
                         {childConvs.length > 0 && (
                           <div
