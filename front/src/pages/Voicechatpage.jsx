@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 
 import ChatHeader from "../components/chat/ChatHeader.jsx";
-import ChatMessages from "../components/chat/ChatMessages.jsx";
+import ChatMessages from "../components/chat/VoiceChatMessages.jsx";
+import "../voicechatApp.css";
 
 const STORAGE_KEY = "voiceConversations_v1";
 const API_BASE =
@@ -48,7 +49,7 @@ function createNewConversation() {
 }
 
 // ---------------------------------------------------------
-// 유틸: 초기 상태 로드 (수정됨: 빈 상태 반환으로 중복 생성 방지)
+// 유틸: 초기 상태 로드
 // ---------------------------------------------------------
 function getInitialChatState() {
   if (typeof window !== "undefined") {
@@ -58,34 +59,34 @@ function getInitialChatState() {
         const parsed = JSON.parse(saved);
 
         // 새 구조 { conversations, folders, currentId }
-        if (
-          parsed &&
-          Array.isArray(parsed.conversations)
-        ) {
+        if (parsed && Array.isArray(parsed.conversations)) {
           const convs = parsed.conversations || [];
           const folders = parsed.folders || [];
           let currentId = parsed.currentId;
-          
-          // 데이터가 있는데 currentId가 유효하지 않으면 첫번째로 설정
-          if (convs.length > 0 && (!currentId || !convs.some((c) => c.id === currentId))) {
+
+          if (
+            convs.length > 0 &&
+            (!currentId || !convs.some((c) => c.id === currentId))
+          ) {
             currentId = convs[0].id;
           }
-          // ★ 중요: 데이터가 있으면 그대로 반환 (기존 목록 보존)
           return { conversations: convs, folders, currentId };
         }
 
         // 예전 구조 호환
         if (Array.isArray(parsed)) {
           const convs = parsed;
-          return { conversations: convs, folders: [], currentId: convs.length > 0 ? convs[0].id : null };
+          return {
+            conversations: convs,
+            folders: [],
+            currentId: convs.length > 0 ? convs[0].id : null,
+          };
         }
       }
     } catch (e) {
       console.error("저장된 음성 대화 목록을 불러오는 중 오류:", e);
     }
   }
-  // ★ 중요: 초기 로드시 데이터가 없으면 빈 배열 반환. 
-  // 실제 새 채팅 생성은 useEffect에서 제어하여 중복/초기화 문제 해결
   return { conversations: [], folders: [], currentId: null };
 }
 
@@ -106,10 +107,20 @@ function makeErrorInfo(rawError) {
   const base = { detail: text, code: errorCode };
 
   if (text.includes("tokens per minute") || text.includes("429")) {
-    return { ...base, title: "토큰 한도 초과", guide: "잠시 후 다시 시도해주세요.", hint: "요청이 너무 많습니다." };
+    return {
+      ...base,
+      title: "토큰 한도 초과",
+      guide: "잠시 후 다시 시도해주세요.",
+      hint: "요청이 너무 많습니다.",
+    };
   }
   if (text.includes("NetworkError") || text.includes("Failed to fetch")) {
-    return { ...base, title: "네트워크 오류", guide: "인터넷 연결을 확인해주세요.", hint: "서버와 통신할 수 없습니다." };
+    return {
+      ...base,
+      title: "네트워크 오류",
+      guide: "인터넷 연결을 확인해주세요.",
+      hint: "서버와 통신할 수 없습니다.",
+    };
   }
 
   return {
@@ -163,14 +174,16 @@ function getDraggedChatId(e) {
   return (
     e.dataTransfer.getData("application/x-chat-id") ||
     e.dataTransfer.getData("text/x-chat-id") ||
-    e.dataTransfer.getData("text/plain") || ""
+    e.dataTransfer.getData("text/plain") ||
+    ""
   );
 }
 function getDraggedFolderId(e) {
   return (
     e.dataTransfer.getData("application/x-folder-id") ||
     e.dataTransfer.getData("text/x-folder-id") ||
-    e.dataTransfer.getData("text/plain") || ""
+    e.dataTransfer.getData("text/plain") ||
+    ""
   );
 }
 
@@ -201,7 +214,7 @@ function VoiceChatPage() {
 
   // 채팅/사이드바/모달 상태
   const [chatState, setChatState] = useState(getInitialChatState);
-  const [input, setInput] = useState(""); 
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorInfo, setErrorInfo] = useState(null);
   const [focusArea, setFocusArea] = useState("chat");
@@ -238,7 +251,7 @@ function VoiceChatPage() {
   const [folderDraggingId, setFolderDraggingId] = useState(null);
   const [folderDragOverId, setFolderDragOverId] = useState(null);
 
-  // ★ 음성 상태 (일시정지 isPaused 추가)
+  // ★ 음성 상태
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -262,6 +275,8 @@ function VoiceChatPage() {
   const currentConv =
     conversations.find((c) => c.id === currentId) || conversations[0];
   const messages = currentConv ? currentConv.messages : [];
+  const hasSpeakableBotMessage =
+    messages && messages.some((m) => m.role === "bot" && m.text);
 
   const isCurrentPending =
     loading && currentConv && pendingConvId && currentConv.id === pendingConvId;
@@ -319,7 +334,9 @@ function VoiceChatPage() {
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
     };
   }, []);
@@ -533,29 +550,23 @@ function VoiceChatPage() {
     setIsResizingSidebar(true);
   };
 
-  // ----------------------------- Home → VoiceChat 새 대화 시작 (수정됨)
-  // ★ 1. Home에서 넘어올 때 채팅 목록 보존 + 새 채팅 1개만 추가
+  // ----------------------------- Home → VoiceChat 새 대화 시작
   useEffect(() => {
-    // 1. Home에서 "새 채팅" 버튼을 눌러서 들어온 경우
     if (location.state?.newChat) {
       if (!startedFromHomeRef.current) {
         startedFromHomeRef.current = true;
-        handleNewChat(); // 기존 목록 유지한 채 새 채팅 추가 & TTS 시작
-        // 상태 초기화하여 새로고침 시 또 생성되는 것 방지
+        handleNewChat();
         navigate(location.pathname, { replace: true, state: {} });
       }
-    } 
-    // 2. 저장된 대화가 하나도 없는 경우 (최초 실행)
-    else if (conversations.length === 0) {
+    } else if (conversations.length === 0) {
       if (!startedFromHomeRef.current) {
-          startedFromHomeRef.current = true;
-          handleNewChat();
+        startedFromHomeRef.current = true;
+        handleNewChat();
       }
     }
-    // 3. 기존 대화가 있는 경우는 아무것도 안 함 (기존 데이터 유지)
   }, [location, navigate, conversations.length]);
 
-  // ----------------------------- 음성 합성(TTS) + 말풍선 하이라이트 (수정됨)
+  // ----------------------------- 음성 합성(TTS) + 말풍선 하이라이트
   const speak = (text, messageIndex = null) => {
     if (typeof window === "undefined") return;
     if (!text) return;
@@ -567,7 +578,7 @@ function VoiceChatPage() {
 
     // 말하기 시작하면 일시정지 상태 해제
     setIsPaused(false);
-    
+
     // 하이라이트 초기화 후 새 텍스트로 세팅
     setSpeakingText(text);
     if (typeof messageIndex === "number") {
@@ -582,57 +593,55 @@ function VoiceChatPage() {
     synthRef.current.cancel();
     const utterance = new window.SpeechSynthesisUtterance(text);
     utterance.lang = "ko-KR";
-    utterance.rate = 1.0; 
+    utterance.rate = 1.0;
 
     utterance.onstart = () => {
       setIsSpeaking(true);
       setIsListening(false);
-      // ★ 시작하자마자 첫 부분(0번 인덱스 근처) 하이라이트 강제 적용 (즉시 효과)
-      setSpeakingCharIndex(0); 
+      setIsPaused(false);
+      // 시작하자마자 첫 부분 하이라이트
+      setSpeakingCharIndex(0);
     };
 
-    // ★ 3. 핵심: 브라우저가 charLength를 안 줄 때(Chrome 한글 등) 강제로 위치 계산하여 즉시 하이라이팅
+    // boundary에서 현재 단어의 시작 인덱스를 하이라이트 기준으로 사용
     utterance.onboundary = (event) => {
-      const currentIndex = event.charIndex;
-      let endIndex;
-      
-      if (typeof event.charLength === "number" && event.charLength > 0) {
-        // 브라우저가 정상적으로 길이를 주면 사용
-        endIndex = currentIndex + event.charLength;
-      } else {
-        // 길이를 안 주면 다음 공백까지 찾아서 강제 지정
-        const nextSpaceIndex = text.indexOf(' ', currentIndex);
-        if (nextSpaceIndex === -1) {
-          // 공백이 없으면 문장 끝까지
-          endIndex = text.length;
-        } else {
-          // 공백 포함하여 하이라이트
-          endIndex = nextSpaceIndex + 1; 
-        }
+      const idx = typeof event.charIndex === "number" ? event.charIndex : 0;
+      if (idx >= 0) {
+        setSpeakingCharIndex(idx);
       }
-      setSpeakingCharIndex(Math.max(0, endIndex));
     };
 
     const resetSpeakState = () => {
-      // 일시정지 상태가 아닐 때만 초기화
-      if (!synthRef.current.paused) {
-        setIsSpeaking(false);
-        setSpeakingText("");
-        setSpeakingMessageIndex(null);
-        setSpeakingCharIndex(0);
-        setIsPaused(false);
-      }
+      setIsSpeaking(false);
+      setSpeakingText("");
+      setSpeakingMessageIndex(null);
+      setSpeakingCharIndex(0);
+      setIsPaused(false);
     };
 
     utterance.onend = resetSpeakState;
-    utterance.onerror = (e) => {
-        // interrupted나 canceled가 아닌 실제 에러일 때만 리셋
-        if(e.error !== 'interrupted' && e.error !== 'canceled') {
-            resetSpeakState();
-        }
+    utterance.onerror = () => {
+      resetSpeakState();
     };
 
     synthRef.current.speak(utterance);
+  };
+
+  // ★ 수정 1) 전역 읽기 완전 중지 함수: speak 밖, 컴포넌트 안 공용 영역으로 분리
+  const stopGlobalSpeak = () => {
+    if (typeof window !== "undefined") {
+      if (synthRef.current) {
+        synthRef.current.cancel();
+      } else if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    }
+
+    setIsSpeaking(false);
+    setIsPaused(false);
+    setSpeakingText("");
+    setSpeakingMessageIndex(null);
+    setSpeakingCharIndex(0);
   };
 
   // 현재 대화에 bot 메시지를 추가하고, 그 메시지를 읽으면서 하이라이트
@@ -651,15 +660,13 @@ function VoiceChatPage() {
       return { ...prev, conversations: updated };
     });
 
-    // 답변 나오면 바로 적응되도록 약간의 지연 후 TTS 실행
     setTimeout(() => {
-        speak(text, newIndex);
+      speak(text, newIndex);
     }, 50);
   };
 
-  // ✅ 페이지 처음 들어왔을 때, 현재 대화의 첫 bot 인사를 한 번만 읽어주기
+  // 인사 자동 읽기 플래그 제어용 (실제 읽기는 Messages 쪽에서)
   useEffect(() => {
-    if (initialGreetingSpokenRef.current) return;
     if (!currentConv || !currentConv.messages || currentConv.messages.length === 0)
       return;
 
@@ -676,16 +683,15 @@ function VoiceChatPage() {
       initialGreetingSpokenRef.current = true;
       return;
     }
+
     const firstBot = currentConv.messages[firstBotIndex];
     if (!firstBot || !firstBot.text) {
       initialGreetingSpokenRef.current = true;
       return;
     }
 
-    // Home에서 newChat으로 오지 않은 일반 진입 시 읽기
     if (!location?.state?.newChat) {
       initialGreetingSpokenRef.current = true;
-      speak(firstBot.text, firstBotIndex);
     }
   }, [currentConv, location]);
 
@@ -710,8 +716,7 @@ function VoiceChatPage() {
       setIsListening(true);
       setIsSpeaking(false);
       setIsPaused(false);
-      // 내가 말하기 시작하면 AI 말하기 취소
-      if(synthRef.current) synthRef.current.cancel();
+      if (synthRef.current) synthRef.current.cancel();
     };
     recognition.onresult = (event) => {
       let transcript = "";
@@ -770,9 +775,7 @@ function VoiceChatPage() {
       );
     }, 900);
     const t2 = setTimeout(() => {
-      setLoadingPhase((prev) =>
-        prev === "searching" ? "composing" : prev
-      );
+      setLoadingPhase((prev) => (prev === "searching" ? "composing" : prev));
     }, 1800);
     phaseTimersRef.current.push(t1, t2);
 
@@ -788,7 +791,12 @@ function VoiceChatPage() {
           ? conv.title
           : summarizeTitleFromMessages(newMessages);
 
-        return { ...conv, messages: newMessages, updatedAt: now, title: newTitle };
+        return {
+          ...conv,
+          messages: newMessages,
+          updatedAt: now,
+          title: newTitle,
+        };
       });
       return { ...prev, conversations: updated };
     });
@@ -812,7 +820,6 @@ function VoiceChatPage() {
         appendBotMessageAndSpeak(targetConvId, msgText);
       } else {
         const answer = data.answer || "(응답이 없습니다)";
-        // ★ 3. 답변 즉시 재생
         appendBotMessageAndSpeak(targetConvId, answer);
       }
     } catch (err) {
@@ -833,28 +840,56 @@ function VoiceChatPage() {
     }
   };
 
-  // ----------------------------- Mic 버튼 클릭 (수정됨: 일시정지/재개/듣기)
-  const handleMicClick = () => {
-    // ★ 4. 말하는 중이면 일시정지 또는 이어듣기
+  // ----------------------------- 재생(일시정지) 버튼
+  const handlePlayClick = () => {
+    if (typeof window === "undefined") return;
+
+    if (!synthRef.current && window.speechSynthesis) {
+      synthRef.current = window.speechSynthesis;
+    }
+    if (!synthRef.current) return;
+
     if (isSpeaking) {
-      if (synthRef.current) {
-        if(isPaused) {
-            // 멈춰있으면 다시 재생 (이어듣기)
-            synthRef.current.resume();
-            setIsPaused(false);
-        } else {
-            // 말하고 있으면 일시정지
-            synthRef.current.pause();
-            setIsPaused(true);
-        }
+      if (synthRef.current.paused) {
+        synthRef.current.resume();
+        setIsPaused(false);
+      } else {
+        synthRef.current.pause();
+        setIsPaused(true);
       }
       return;
     }
 
+    if (
+      !currentConv ||
+      !currentConv.messages ||
+      currentConv.messages.length === 0
+    )
+      return;
+
+    const msgs = currentConv.messages;
+    let targetIndex = null;
+    for (let i = msgs.length - 1; i >= 0; i -= 1) {
+      if (msgs[i].role === "bot" && msgs[i].text) {
+        targetIndex = i;
+        break;
+      }
+    }
+    if (targetIndex === null) return;
+
+    const text = msgs[targetIndex].text;
+    if (!text) return;
+
+    speak(text, targetIndex);
+  };
+
+  // ----------------------------- Mic 버튼 클릭
+  const handleMicClick = () => {
+    if (loading) return;
+
     setupRecognition();
     if (!recognitionRef.current) return;
 
-    // 이미 듣는 중이면 → 녹음 종료 + 전송
     if (isListening) {
       stopRecognition();
       const trimmed = input.trim();
@@ -867,7 +902,6 @@ function VoiceChatPage() {
         setInput("");
       }
     } else {
-      // 새로운 음성 입력 시작
       setInput("");
       try {
         recognitionRef.current.start();
@@ -882,11 +916,14 @@ function VoiceChatPage() {
     }
   };
 
-  // ----------------------------- 새 음성 채팅 (수정됨: 1개 생성시 바로 TTS)
+  // ----------------------------- 새 음성 채팅
   const handleNewChat = () => {
     if (synthRef.current) synthRef.current.cancel();
-    if (recognitionRef.current) try { recognitionRef.current.stop(); } catch {}
-    
+    if (recognitionRef.current)
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+
     setIsSpeaking(false);
     setIsListening(false);
     setIsPaused(false);
@@ -898,7 +935,6 @@ function VoiceChatPage() {
     const newConv = createNewConversation();
     setChatState((prev) => {
       const prevList = prev.conversations || [];
-      // ★ 기존 목록에 새 채팅을 추가 (목록 보관)
       const newList = [...prevList, newConv];
       return { ...prev, conversations: newList, currentId: newConv.id };
     });
@@ -908,14 +944,9 @@ function VoiceChatPage() {
     setFolderMenuOpenId(null);
     setFocusArea("chat");
     setChatSearch("");
-
-    // ★ 1. 새 대화 생성 시 0.1초 뒤 인사말("안녕하세요!...") 읽고 하이라이팅
-    setTimeout(() => {
-        speak("안녕하세요! 말씀해 주시면 듣고 대답해 드립니다.", 0);
-    }, 100);
   };
 
-  // ----------------------------- 대화 선택/삭제/이름변경
+  // ----------------------------- 대화 선택/삭제/이름변경 등
   const handleSelectConversation = (id) => {
     setChatState((prev) => ({ ...prev, currentId: id }));
     setSelectedFolderId(null);
@@ -926,8 +957,11 @@ function VoiceChatPage() {
     setIsSearchModalOpen(false);
 
     if (synthRef.current) synthRef.current.cancel();
-    if (recognitionRef.current) try { recognitionRef.current.stop(); } catch {}
-    
+    if (recognitionRef.current)
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+
     setIsSpeaking(false);
     setIsListening(false);
     setIsPaused(false);
@@ -1058,7 +1092,6 @@ function VoiceChatPage() {
     setFolderRenameInfo(null);
   };
 
-  // 폴더 삭제 (안의 채팅은 루트로 이동)
   const handleDeleteFolder = (folderId) => {
     setChatState((prev) => {
       const list = prev.folders || [];
@@ -1108,17 +1141,13 @@ function VoiceChatPage() {
       ),
     }));
     setDraggingId(null);
-    setDragOverId(null);
-    setDragOverFolderId(null);
   };
-
   const handleFolderDrop = (e, folderId) => {
     e.preventDefault();
     e.stopPropagation();
 
     const draggedFolderId = folderDraggingId || getDraggedFolderId(e);
     if (draggedFolderId) {
-      // 폴더 재정렬
       setChatState((prev) => {
         const list = [...(prev.folders || [])];
         const fromIndex = list.findIndex((f) => f.id === draggedFolderId);
@@ -1145,7 +1174,6 @@ function VoiceChatPage() {
       return;
     }
 
-    // 채팅을 폴더로 이동
     setChatState((prev) => {
       const exist = (prev.conversations || []).some((c) => c.id === convId);
       if (!exist) return prev;
@@ -1486,18 +1514,14 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
   // ------------------------------------------------------- 렌더링
   return (
     <div className="page chat-page voice-mode">
-      {/* 검색 모달 + 로딩/복사/상세 모달 전용 스타일 + 음성 UI 스타일 */}
-      {/* 스타일 코드는 기존과 동일하므로 생략하지 않고 그대로 둡니다 */}
+      {/* 이 안의 <style> 블록은 그대로 두고, stopGlobalSpeak만 위에서 분리한 상태입니다. */}
       <style>{`
-        /* 구글 폰트 불러오기 (Noto Sans KR) */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
 
-        /* 페이지 전체에 부드러운 고딕 폰트 적용 */
         body, button, input, textarea, .chat-page, .chat-shell, .chat-sidebar {
           font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif !important;
         }
 
-        /* (기존 CSS 스타일은 그대로 유지 - 생략 없이 전체 포함) */
         .sidebar-search-trigger {
           width: calc(100% - 24px);
           margin: 0 12px 12px 12px;
@@ -1611,7 +1635,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           to { opacity: 1; transform: translateY(0); }
         }
 
-        /* typing dots (로딩중 ... 애니메이션) */
         .typing-dots {
           display: inline-flex;
           align-items: center;
@@ -1646,7 +1669,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           color: #9ca3af;
         }
 
-        /* 복사 완료 모달 (가운데) */
         .copy-modal-overlay {
           position: fixed;
           inset: 0;
@@ -1700,7 +1722,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           }
         }
 
-        /* ===== 상세 정보 모달 스타일 ===== */
         .details-modal {
           width: min(520px, 90vw);
           background: #ffffff;
@@ -1788,7 +1809,52 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
         .voice-status {
           font-size: 0.85rem;
           color: #6b7280;
+          text-align: center;
         }
+
+        .voice-button-row {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+        }
+
+        .play-button {
+          width: 48px;
+          height: 48px;
+          border-radius: 999px;
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 22px;
+          box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+          background: linear-gradient(135deg, #111827, #4b5563);
+          color: #f9fafb;
+          transition: all 0.2s ease;
+        }
+        .play-button:hover:not(.disabled) {
+          transform: translateY(-1px) scale(1.03);
+          box-shadow: 0 12px 22px rgba(0,0,0,0.16);
+        }
+        .play-button:active:not(.disabled) {
+          transform: translateY(1px) scale(0.97);
+          box-shadow: 0 6px 14px rgba(0,0,0,0.12);
+        }
+        .play-button.playing {
+          background: linear-gradient(135deg, #10b981, #059669);
+        }
+        .play-button.paused {
+          background: linear-gradient(135deg, #6b7280, #4b5563);
+        }
+        .play-button.disabled {
+          opacity: 0.35;
+          cursor: default;
+          box-shadow: none;
+          transform: none;
+        }
+
         .mic-button {
           width: 64px;
           height: 64px;
@@ -1840,7 +1906,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
 
-        /* 컨텍스트 메뉴 */
         .sidebar-chat-menu {
           position: fixed;
           background: white;
@@ -1878,7 +1943,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           outline: 1px dashed #60a5fa;
         }
 
-        /* 채팅 말풍선 안에서 현재까지 읽은 부분 형광펜 표시 */
         .chat-tts-highlight {
           background: #fff3b0;
           transition: background-color 0.15s ease-out;
@@ -1896,7 +1960,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
       ></button>
 
       <div className="chat-layout">
-        {/* ===== 좌측: 사이드바 ===== */}
+        {/* 좌측 사이드바 */}
         <aside
           className={
             "chat-sidebar" +
@@ -1923,7 +1987,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
 
           {!sidebarCollapsed && (
             <>
-              {/* 채팅 검색 트리거 버튼 */}
               <button
                 className="sidebar-search-trigger"
                 onClick={() => {
@@ -1947,7 +2010,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                 채팅 검색
               </button>
 
-              {/* ================== 폴더 섹션 ================== */}
+              {/* 폴더 섹션 */}
               <div className="sidebar-section-title">폴더</div>
 
               <div
@@ -2206,7 +2269,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                 </button>
               </div>
 
-              {/* ================== 채팅(루트) 섹션 ================== */}
+              {/* 채팅(루트) 섹션 */}
               <div
                 className="sidebar-chat-section"
                 onDragOver={handleRootListDragOver}
@@ -2285,7 +2348,8 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                           className="sidebar-chat-more"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const rect = e.currentTarget.getBoundingClientRect();
+                            const rect =
+                              e.currentTarget.getBoundingClientRect();
                             const menuWidth = 160;
                             const viewportWidth =
                               window.innerWidth ||
@@ -2324,7 +2388,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           )}
         </aside>
 
-        {/* ===== 우측: 실제 챗봇 화면 ===== */}
+        {/* 우측: 실제 챗봇 화면 */}
         <div
           className="chat-shell"
           onMouseDown={() => {
@@ -2332,14 +2396,11 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
             setSelectedFolderId(null);
           }}
         >
-          <ChatHeader
-            isOnline={isOnline}
-            onClickLogo={() => navigate("/")}
-          />
+          <ChatHeader isOnline={isOnline} onClickLogo={() => navigate("/")} />
 
           <main className="chat-main">
             <div className="chat-container">
-              {/* ====== 대화 말풍선 영역 ====== */}
+              {/* 말풍선 영역 */}
               <ChatMessages
                 messages={messages}
                 isCurrentPending={isCurrentPending}
@@ -2351,44 +2412,69 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                 handleCopyMessage={handleCopyMessage}
                 handleDeleteMessage={handleDeleteMessage}
                 messagesEndRef={messagesEndRef}
-                /* ★ TTS 하이라이트 정보 전달 */
                 speakingMessageIndex={speakingMessageIndex}
                 speakingCharIndex={speakingCharIndex}
+                onStopGlobalSpeak={stopGlobalSpeak}
               />
-
-              {/* ====== 음성 입력/재생 영역 ====== */}
+              {/* 음성 입력/재생 영역 */}
               <div className="voice-controls">
                 <div className="voice-transcript">
                   {isListening ? input || "듣고 있습니다..." : ""}
                 </div>
-                <button
-                  className={
-                    "mic-button " +
-                    (loading
-                      ? "loading"
+
+                <div className="voice-button-row">
+                  {/* 재생 / 일시정지 버튼 */}
+                  <button
+                    className={
+                      "play-button " +
+                      (isSpeaking ? (isPaused ? "paused" : "playing") : "") +
+                      (!hasSpeakableBotMessage || loading ? " disabled" : "")
+                    }
+                    onClick={handlePlayClick}
+                    disabled={!hasSpeakableBotMessage || loading}
+                    aria-label={
+                      !hasSpeakableBotMessage
+                        ? "재생할 내용이 없습니다"
+                        : isSpeaking
+                        ? isPaused
+                          ? "이어 듣기"
+                          : "일시 정지"
+                        : "마지막 답변 재생"
+                    }
+                  >
+                    {!hasSpeakableBotMessage
+                      ? "▶️"
                       : isSpeaking
-                      ? (isPaused ? "idle" : "speaking") // 일시정지면 일반 색상, 말하면 초록색
-                      : isListening
-                      ? "listening"
-                      : "idle")
-                  }
-                  onClick={handleMicClick}
-                  disabled={loading}
-                  aria-label="음성 제어"
-                >
-                  {loading ? "⏳" : isSpeaking 
-                      ? (isPaused ? "▶️" : "⏸️") // 말하는 중: 일시정지 아이콘 / 멈춤: 재생 아이콘
-                      : isListening ? "⏹️" : "🎤"
-                  }
-                </button>
+                      ? isPaused
+                        ? "▶️"
+                        : "⏸️"
+                      : "▶️"}
+                  </button>
+
+                  {/* 마이크 버튼 */}
+                  <button
+                    className={
+                      "mic-button " +
+                      (loading ? "loading" : isListening ? "listening" : "idle")
+                    }
+                    onClick={handleMicClick}
+                    disabled={loading}
+                    aria-label={isListening ? "음성 입력 종료" : "음성 입력 시작"}
+                  >
+                    {loading ? "⏳" : isListening ? "⏹️" : "🎤"}
+                  </button>
+                </div>
+
                 <div className="voice-status">
                   {loading
                     ? "답변을 생성하고 있어요..."
                     : isSpeaking
-                    ? (isPaused ? "일시 정지됨 (클릭하여 이어듣기)" : "답변을 읽어주는 중 (클릭하여 일시정지)")
+                    ? isPaused
+                      ? "답변 읽기가 일시 정지되었습니다. ▶ 버튼을 누르면 이어서 읽어요."
+                      : "답변을 읽어주는 중입니다. ⏸ 버튼을 누르면 일시정지합니다."
                     : isListening
-                    ? "말씀이 끝나면 버튼을 눌러 전송하세요."
-                    : "마이크 버튼을 눌러 음성으로 질문해 보세요."}
+                    ? "말씀이 끝나면 마이크 버튼을 눌러 전송하세요."
+                    : "마이크 버튼으로 음성 질문, 재생 버튼으로 마지막 답변 듣기를 할 수 있어요."}
                 </div>
               </div>
             </div>
@@ -2396,7 +2482,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
         </div>
       </div>
 
-      {/* ... (검색 모달 등 나머지 모달 컴포넌트들은 기존 코드와 동일) ... */}
       {isSearchModalOpen && (
         <div
           className="search-modal-overlay"
@@ -2461,7 +2546,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
         </div>
       )}
 
-      {/* ===== 전역 채팅 더보기 메뉴 ===== */}
+      {/* 전역 채팅 더보기 메뉴 */}
       {activeMenuConversation && menuPosition && (
         <div
           className="sidebar-chat-menu"
@@ -2515,7 +2600,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
         </div>
       )}
 
-      {/* ===== 전역 폴더 더보기 메뉴 ===== */}
+      {/* 전역 폴더 더보기 메뉴 */}
       {activeMenuFolder && folderMenuPosition && (
         <div
           className="sidebar-chat-menu"
@@ -2549,7 +2634,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
         </div>
       )}
 
-      {/* ===== 상세 정보 모달 ===== */}
+      {/* 상세 정보 모달 */}
       {detailsModalChat && (
         <div
           className="error-modal-overlay"
@@ -2639,7 +2724,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
         </div>
       )}
 
-      {/* ===== 대화 삭제 확인 모달 ===== */}
+      {/* 대화 삭제 확인 모달 */}
       {confirmDelete && (
         <div
           className="error-modal-overlay"
@@ -2681,7 +2766,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
         </div>
       )}
 
-      {/* ===== 폴더 삭제 확인 모달 ===== */}
+      {/* 폴더 삭제 확인 모달 */}
       {confirmFolderDelete && (
         <div
           className="error-modal-overlay"
@@ -2725,7 +2810,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
         </div>
       )}
 
-      {/* ===== 새 폴더 생성 모달 ===== */}
+      {/* 새 폴더 생성 모달 */}
       {folderCreateModalOpen && (
         <div className="error-modal-overlay">
           <div className="error-modal" role="dialog" aria-modal="true">
@@ -2770,7 +2855,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
         </div>
       )}
 
-      {/* ===== 폴더 이름 변경 모달 ===== */}
+      {/* 폴더 이름 변경 모달 */}
       {folderRenameInfo && (
         <div className="error-modal-overlay">
           <div className="error-modal" role="dialog" aria-modal="true">
@@ -2812,7 +2897,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
         </div>
       )}
 
-      {/* ===== 대화 이름 변경 모달 ===== */}
+      {/* 대화 이름 변경 모달 */}
       {renameInfo && (
         <div className="error-modal-overlay">
           <div className="error-modal" role="dialog" aria-modal="true">
@@ -2854,7 +2939,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
         </div>
       )}
 
-      {/* ===== 가운데 에러 모달 ===== */}
+      {/* 가운데 에러 모달 */}
       {errorInfo && (
         <div
           className="error-modal-overlay"
@@ -2898,7 +2983,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
         </div>
       )}
 
-      {/* ===== 복사 완료 모달 (가운데) ===== */}
+      {/* 복사 완료 모달 */}
       {copyToastVisible && (
         <div
           className="copy-modal-overlay"

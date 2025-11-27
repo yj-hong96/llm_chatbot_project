@@ -1557,10 +1557,6 @@ select {
   overflow-y: auto;
 }
 
-/* src/pages/VoiceChatPage.css 또는 글로벌 CSS에 추가 */
-
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
-
 body, .chat-page {
   font-family: 'Noto Sans KR', sans-serif !important;
 }
@@ -1646,6 +1642,53 @@ body, .chat-page {
   box-shadow: none;
   transform: none;
 }
+        .voice-buttons {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+          margin: 4px 0 6px;
+        }
+
+        .play-button {
+          width: 64px;
+          height: 64px;
+          border-radius: 50%;
+          border: none;
+          cursor: pointer;
+          font-size: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+          color: #ffffff;
+          position: relative;
+        }
+        .play-button:hover:not(:disabled) {
+          transform: translateY(-2px) scale(1.05);
+          box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+        }
+        .play-button:active:not(:disabled) {
+          transform: translateY(1px) scale(0.95);
+        }
+        .play-button.idle {
+          background: linear-gradient(135deg, #6366f1, #4f46e5);
+        }
+        .play-button.speaking {
+          background: linear-gradient(135deg, #10b981, #059669);
+          animation: pulse-green 1.6s infinite;
+        }
+        .play-button.paused {
+          background: #6b7280;
+        }
+        .play-button:disabled {
+          cursor: default;
+          opacity: 0.6;
+          box-shadow: none;
+          transform: none;
+        }
+
 
 @keyframes pulse-red {
   0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
