@@ -1,5 +1,5 @@
 // src/components/chat/VoiceChatMessages.jsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 
 // ✅ 간단한 시간 포맷팅 함수
 function formatTime(timestamp) {
@@ -65,13 +65,12 @@ function VoiceChatMessages({
   // ✨ 드래그 선택 메뉴 상태 (좌표 및 대상 메시지 인덱스)
   const [selectionMenu, setSelectionMenu] = useState(null);
 
-  // ✨ 자동으로 읽어준 "첫 인사 메시지"를 추적 (이제 전역에서 처리하므로, ref만 유지)
-  const autoSpokenMessageRef = useRef(null);
-
   // 컴포넌트 언마운트 시 TTS 중단
   useEffect(() => {
     return () => {
-      window.speechSynthesis.cancel();
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
     };
   }, []);
 
@@ -127,19 +126,18 @@ function VoiceChatMessages({
     setSelectionMenu({
       x: rect.left + rect.width / 2,
       y: rect.top - 10,
-      idx: idx,
+      idx,
     });
   };
 
   // ✅ TTS 함수 (이 컴포넌트 내부 "듣기" 버튼/부분 읽기용)
   const handleSpeak = (text, idx) => {
-    const synth = window.speechSynthesis;
-
-    if (!synth) {
+    if (typeof window === "undefined" || !window.speechSynthesis) {
       alert("이 브라우저는 음성 합성을 지원하지 않습니다.");
       return;
     }
 
+    const synth = window.speechSynthesis;
     synth.cancel();
     setSpeakingIdx(null);
     setLocalCharIndex(-1);
@@ -215,7 +213,7 @@ function VoiceChatMessages({
   const handleStopSpeak = () => {
     // ★ 부모(VoiceChatPage) 쪽 전역 재생 상태도 같이 리셋
     if (onStopGlobalSpeak) {
-      onStopGlobalSpeak();   // 내부에서 cancel + isSpeaking 등 정리
+      onStopGlobalSpeak(); // 내부에서 cancel + isSpeaking 등 정리
     } else if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
@@ -234,15 +232,6 @@ function VoiceChatMessages({
     handleDeleteMessage(idx);
     setOpenMessageMenuIndex(null);
   };
-
-  // (예전) VoiceChat 전용 첫 인사 자동 읽기는
-  // 이제 상위(VoiceChatPage)에서 speak()로 처리하므로 여기서는 별도 동작하지 않게 둠
-  useEffect(() => {
-    if (!messages || messages.length === 0) return;
-    const firstBot = messages.find((m) => m.role === "bot");
-    if (!firstBot || !firstBot.text) return;
-    autoSpokenMessageRef.current = firstBot;
-  }, [messages]);
 
   return (
     // 스크롤 시 플로팅 메뉴 닫기 위해 onScroll 추가
@@ -449,8 +438,7 @@ function VoiceChatMessages({
                   display: "flex",
                   flexDirection: "column",
                   gap: 4,
-                  opacity:
-                    isHovered || isMenuOpen || isAnySpeaking ? 1 : 0,
+                  opacity: isHovered || isMenuOpen || isAnySpeaking ? 1 : 0,
                   transition: "opacity 0.2s ease",
                   visibility:
                     isHovered || isMenuOpen || isAnySpeaking
