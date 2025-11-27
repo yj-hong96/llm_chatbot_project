@@ -5,8 +5,10 @@ import { useState, useEffect, useRef } from "react";
 import ChatHeader from "../components/chat/ChatHeader.jsx";
 import ChatMessages from "../components/chat/VoiceChatMessages.jsx";
 import "../voicechatApp.css";
+const VOICE_GREETING_TEXT = "안녕하세요! 말씀해 주시면 듣고 대답해 드립니다.";
 
 const STORAGE_KEY = "voiceConversations_v1";
+
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:5000";
 
@@ -31,6 +33,7 @@ function formatDateTime(timestamp) {
 // ---------------------------------------------------------
 // 유틸: 새 음성 대화(기본 인사 포함) 생성
 // ---------------------------------------------------------
+
 function createNewConversation() {
   const now = Date.now();
   return {
@@ -41,7 +44,7 @@ function createNewConversation() {
     messages: [
       {
         role: "bot",
-        text: "안녕하세요! 말씀해 주시면 듣고 대답해 드립니다.",
+        text: VOICE_GREETING_TEXT, // ← 상수 사용
       },
     ],
     folderId: null,
@@ -571,16 +574,19 @@ function VoiceChatPage() {
     if (typeof window === "undefined") return;
     if (!text) return;
 
+    // speechSynthesis 준비
     if (!synthRef.current && window.speechSynthesis) {
       synthRef.current = window.speechSynthesis;
     }
-    if (!synthRef.current || !window.SpeechSynthesisUtterance) return;
+    if (!synthRef.current || !window.SpeechSynthesisUtterance) {
+      console.warn("이 브라우저에서는 음성 합성을 사용할 수 없습니다.");
+      return;
+    }
 
-    // 말하기 시작하면 일시정지 상태 해제
+    // 일시정지 해제 + 하이라이트 초기화
     setIsPaused(false);
-
-    // 하이라이트 초기화 후 새 텍스트로 세팅
     setSpeakingText(text);
+
     if (typeof messageIndex === "number") {
       setSpeakingMessageIndex(messageIndex);
       setSpeakingCharIndex(0);
@@ -591,19 +597,20 @@ function VoiceChatPage() {
 
     // 이전 읽기 중단
     synthRef.current.cancel();
+
     const utterance = new window.SpeechSynthesisUtterance(text);
-    utterance.lang = "ko-KR";
     utterance.rate = 1.0;
+    utterance.pitch = 1.1;
+    utterance.volume = 1.0;
 
     utterance.onstart = () => {
       setIsSpeaking(true);
       setIsListening(false);
       setIsPaused(false);
-      // 시작하자마자 첫 부분 하이라이트
       setSpeakingCharIndex(0);
     };
 
-    // boundary에서 현재 단어의 시작 인덱스를 하이라이트 기준으로 사용
+    // boundary 이벤트마다 하이라이트 위치 갱신
     utterance.onboundary = (event) => {
       const idx = typeof event.charIndex === "number" ? event.charIndex : 0;
       if (idx >= 0) {
@@ -620,12 +627,40 @@ function VoiceChatPage() {
     };
 
     utterance.onend = resetSpeakState;
-    utterance.onerror = () => {
-      resetSpeakState();
+    utterance.onerror = resetSpeakState;
+
+    // 🔊 한국어 보이스 선택 후 읽기
+    let voices = synthRef.current.getVoices();
+
+    const setKoreanVoiceAndSpeak = () => {
+      const korVoice =
+        voices.find(
+          (v) =>
+            v.lang.includes("ko") ||
+            v.name.includes("Korean") ||
+            v.name.includes("한국어")
+        ) || null;
+
+      if (korVoice) {
+        utterance.voice = korVoice;
+        utterance.lang = korVoice.lang;
+      } else {
+        utterance.lang = "ko-KR";
+      }
+
+      synthRef.current.speak(utterance);
     };
 
-    synthRef.current.speak(utterance);
+    if (!voices || voices.length === 0) {
+      synthRef.current.onvoiceschanged = () => {
+        voices = synthRef.current.getVoices();
+        setKoreanVoiceAndSpeak();
+      };
+    } else {
+      setKoreanVoiceAndSpeak();
+    }
   };
+
 
   // ★ 수정 1) 전역 읽기 완전 중지 함수: speak 밖, 컴포넌트 안 공용 영역으로 분리
   const stopGlobalSpeak = () => {
@@ -938,6 +973,12 @@ function VoiceChatPage() {
       const newList = [...prevList, newConv];
       return { ...prev, conversations: newList, currentId: newConv.id };
     });
+
+    // 🔊 새 대화 인사 자동 읽기 (메시지 index: 0) - 약간의 딜레이 후 실행
+    setTimeout(() => {
+      speak(VOICE_GREETING_TEXT, 0);
+    }, 100);
+
     setSelectedFolderId(null);
     setErrorInfo(null);
     setMenuOpenId(null);
