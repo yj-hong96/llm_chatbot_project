@@ -363,7 +363,7 @@ function ChatPage() {
   const [openMessageMenuIndex, setOpenMessageMenuIndex] = useState(null);
   const [copyToastVisible, setCopyToastVisible] = useState(false);
   const [loadingPhase, setLoadingPhase] = useState(null);
-  const phaseTimersRef = useRef([]); // ⭐ 로딩 단계 타이머 저장용
+  const phaseTimersRef = useRef([]); // 로딩 단계 타이머 저장용
 
   // ✅ 폴더별 접힘 상태 관리
   const [collapsedFolderIds, setCollapsedFolderIds] = useState(() => new Set());
@@ -376,30 +376,30 @@ function ChatPage() {
       return s;
     });
 
+  // ----------------------------- 개별 메시지 삭제
+  const handleDeleteMessage = (messageIndex) => {
+    if (!currentConv) return;
 
-    // ----------------------------- 개별 메시지 삭제
-    const handleDeleteMessage = (messageIndex) => {
-      if (!currentConv) return;
+    setChatState((prev) => {
+      const now = Date.now();
+      const updated = (prev.conversations || []).map((conv) => {
+        if (conv.id !== currentConv.id) return conv;
 
-      setChatState((prev) => {
-        const now = Date.now();
-        const updated = (prev.conversations || []).map((conv) => {
-          if (conv.id !== currentConv.id) return conv;
+        const newMessages = conv.messages.filter(
+          (_, idx) => idx !== messageIndex
+        );
 
-          const newMessages = conv.messages.filter(
-            (_, idx) => idx !== messageIndex
-          );
-
-          return {
-            ...conv,
-            messages: newMessages,
-            updatedAt: now,
-          };
-        });
-
-        return { ...prev, conversations: updated };
+        return {
+          ...conv,
+          messages: newMessages,
+          updatedAt: now,
+        };
       });
-    };
+
+      return { ...prev, conversations: updated };
+    });
+  };
+
   // ----------------------------- 데이터/선택/모달/드래그/사이드바 상태
   const [chatState, setChatState] = useState(getInitialChatState);
   const [input, setInput] = useState("");
@@ -410,6 +410,8 @@ function ChatPage() {
   // 🔍 채팅 검색 상태
   const [chatSearch, setChatSearch] = useState("");
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [searchSelectedIndex, setSearchSelectedIndex] = useState(0); // 선택된 검색 결과 인덱스
+  const searchResultsRef = useRef(null); // 검색 결과 리스트 ref
 
   // ✅ 현재 어떤 채팅방이 응답 대기 중인지 추적
   const [pendingConvId, setPendingConvId] = useState(null);
@@ -432,7 +434,7 @@ function ChatPage() {
   const [folderRenameInfo, setFolderRenameInfo] = useState(null);
   const [pendingFolderConvId, setPendingFolderConvId] = useState(null);
 
-  // ⭐ [추가] 상세 정보 모달 상태 (현재 보고 있는 채팅 객체 저장)
+  // 상세 정보 모달 상태 (현재 보고 있는 채팅 객체 저장)
   const [detailsModalChat, setDetailsModalChat] = useState(null);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -529,6 +531,7 @@ function ChatPage() {
         e.preventDefault();
         setChatSearch("");
         setIsSearchModalOpen(true);
+        setSearchSelectedIndex(0); // 검색 열릴 때 항상 첫 번째 선택
       } else if (key === "n") {
         e.preventDefault();
         handleNewChat();
@@ -565,7 +568,6 @@ function ChatPage() {
         setFolderMenuOpenId(null);
         setIsSearchModalOpen(false);
         setOpenMessageMenuIndex(null);
-        // 상세 정보 모달 닫기
         setDetailsModalChat(null);
         return;
       }
@@ -573,7 +575,6 @@ function ChatPage() {
 
       if (confirmDelete) {
         e.preventDefault();
-        // ✅ 여기서 확인 모달의 '예' 버튼을 엔터로 눌렀을 때 삭제 함수 호출
         handleDeleteConversation(confirmDelete.id);
         setConfirmDelete(null);
         return;
@@ -627,22 +628,26 @@ function ChatPage() {
     detailsModalChat,
   ]);
 
-    // ----------------------------- 복사 모달: Enter / ESC / Space 로 닫기
+  // ----------------------------- 복사 모달: Enter / ESC / Space 로 닫기
   useEffect(() => {
     if (!copyToastVisible) return;
 
     const handleCopyToastKey = (e) => {
-      // Enter, Space, ESC 입력 시 모달 닫기
-      if (e.key === "Enter" || e.key === " " || e.key === "Spacebar" || e.key === "Escape") {
+      if (
+        e.key === "Enter" ||
+        e.key === " " ||
+        e.key === "Spacebar" ||
+        e.key === "Escape"
+      ) {
         e.preventDefault();
-        e.stopPropagation(); // 입력창으로 이벤트 안 넘어가게 막기
+        e.stopPropagation();
         setCopyToastVisible(false);
       }
     };
 
-    // capture: true 로 등록해서 React 입력 핸들러보다 먼저 잡아줌
     window.addEventListener("keydown", handleCopyToastKey, true);
-    return () => window.removeEventListener("keydown", handleCopyToastKey, true);
+    return () =>
+      window.removeEventListener("keydown", handleCopyToastKey, true);
   }, [copyToastVisible]);
 
   // ----------------------------- Delete 키: focusArea
@@ -765,12 +770,10 @@ function ChatPage() {
     setIsSearchModalOpen(false);
   };
 
-  // ----------------------------- [중요] 대화 삭제 기능 수정 -----------------------------
   const handleDeleteConversation = (id) => {
     setChatState((prev) => {
       const list = prev.conversations || [];
       const deleteIndex = list.findIndex((c) => c.id === id);
-      // 삭제할 대화가 없으면 리턴
       if (deleteIndex === -1) return prev;
 
       let filtered = list.filter((c) => c.id !== id);
@@ -888,7 +891,6 @@ function ChatPage() {
     setFolderRenameInfo(null);
   };
 
-  // 폴더 삭제 (안의 채팅은 루트로 이동)
   const handleDeleteFolder = (folderId) => {
     setChatState((prev) => {
       const list = prev.folders || [];
@@ -952,7 +954,8 @@ function ChatPage() {
         const list = [...(prev.folders || [])];
         const fromIndex = list.findIndex((f) => f.id === draggedFolderId);
         const toIndex = list.findIndex((f) => f.id === folderId);
-        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return prev;
+        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex)
+          return prev;
 
         const [moved] = list.splice(fromIndex, 1);
         list.splice(toIndex, 0, moved);
@@ -1265,11 +1268,9 @@ function ChatPage() {
     setMenuOpenId(null);
     setFolderMenuOpenId(null);
 
-    // ⭐ 이전 단계 타이머 모두 초기화
     phaseTimersRef.current.forEach((id) => clearTimeout(id));
     phaseTimersRef.current = [];
 
-    // ⭐ 단계별 텍스트 변경: understanding → searching → composing
     setLoadingPhase("understanding");
     const t1 = setTimeout(() => {
       setLoadingPhase((prev) =>
@@ -1333,7 +1334,6 @@ function ChatPage() {
         setErrorInfo(info);
       } else {
         const answer = data.answer || "(응답이 없습니다)";
-        // 이미 composing 단계로 올라간 상태일 수 있으므로 여기서는 단순히 메시지만 추가
         setChatState((prev) => {
           const now = Date.now();
           const updated = (prev.conversations || []).map((conv) => {
@@ -1369,7 +1369,6 @@ function ChatPage() {
     } finally {
       setLoading(false);
       setPendingConvId(null);
-      // ⭐ 타이머 정리 + 단계 초기화
       phaseTimersRef.current.forEach((id) => clearTimeout(id));
       phaseTimersRef.current = [];
       setLoadingPhase(null);
@@ -1379,19 +1378,16 @@ function ChatPage() {
   const handleInputKeyDown = (e) => {
     if (e.key === "Enter") {
       if (e.altKey) {
-        // Alt+Enter → 줄바꿈만
         e.preventDefault();
         const { selectionStart, selectionEnd, value } = e.target;
         const next =
           value.slice(0, selectionStart) + "\n" + value.slice(selectionEnd);
         setInput(next);
 
-        // 커서 위치도 줄바꿈 뒤로
         requestAnimationFrame(() => {
           e.target.selectionStart = e.target.selectionEnd = selectionStart + 1;
         });
       } else if (!e.shiftKey) {
-        // 그냥 Enter → 전송
         e.preventDefault();
         sendMessage();
       }
@@ -1434,9 +1430,51 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
 
   const modalSearchResults = chatSearch.trim()
     ? conversations.filter((conv) =>
-        conv.title.toLowerCase().includes(chatSearch.toLowerCase())
+        (conv.title || "").toLowerCase().includes(chatSearch.toLowerCase())
       )
     : [];
+
+  // 검색 결과 수가 바뀔 때 선택 인덱스 보정
+  useEffect(() => {
+    if (!isSearchModalOpen) return;
+
+    if (modalSearchResults.length === 0) {
+      setSearchSelectedIndex(-1);
+      return;
+    }
+
+    setSearchSelectedIndex((prev) => {
+      if (prev < 0) return 0;
+      if (prev >= modalSearchResults.length)
+        return modalSearchResults.length - 1;
+      return prev;
+    });
+  }, [isSearchModalOpen, modalSearchResults.length]);
+
+  // 선택된 검색 결과가 항상 보이도록 스크롤
+  useEffect(() => {
+    if (!isSearchModalOpen) return;
+    if (!searchResultsRef.current) return;
+    if (searchSelectedIndex < 0) return;
+    if (searchSelectedIndex >= modalSearchResults.length) return;
+
+    const container = searchResultsRef.current;
+    const items = container.querySelectorAll(".search-result-item");
+    if (!items.length) return;
+    const el = items[searchSelectedIndex];
+    if (!el) return;
+
+    const elTop = el.offsetTop;
+    const elBottom = elTop + el.offsetHeight;
+    const viewTop = container.scrollTop;
+    const viewBottom = viewTop + container.clientHeight;
+
+    if (elTop < viewTop) {
+      container.scrollTop = elTop;
+    } else if (elBottom > viewBottom) {
+      container.scrollTop = elBottom - container.clientHeight;
+    }
+  }, [isSearchModalOpen, searchSelectedIndex, modalSearchResults.length]);
 
   const activeMenuConversation = menuOpenId
     ? conversations.find((c) => c.id === menuOpenId)
@@ -1451,10 +1489,8 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
       {/* 검색 모달 + 로딩/복사 모달 전용 스타일 */}
       {/* ✅ 구글 폰트 추가 및 전역 폰트 강제 적용 스타일 */}
       <style>{`
-        /* 구글 폰트 불러오기 (Noto Sans KR) */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
 
-        /* 페이지 전체에 부드러운 고딕 폰트 적용 */
         body, button, input, textarea, .chat-page, .chat-shell, .chat-sidebar {
           font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif !important;
         }
@@ -1542,6 +1578,13 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
         .search-result-item:hover {
           background: #f3f4f6;
         }
+        .search-result-item.selected {
+          background: #e5efff;
+        }
+        .search-result-item.selected .search-result-text {
+          color: #1d4ed8;
+          font-weight: 500;
+        }
         .search-result-icon {
           margin-right: 12px;
           color: #9ca3af;
@@ -1572,7 +1615,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           to { opacity: 1; transform: translateY(0); }
         }
 
-        /* typing dots (로딩중 ... 애니메이션) */
         .typing-dots {
           display: inline-flex;
           align-items: center;
@@ -1607,7 +1649,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           color: #9ca3af;
         }
 
-        /* 복사 완료 모달 (가운데) */
         .copy-modal-overlay {
           position: fixed;
           inset: 0;
@@ -1661,7 +1702,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           }
         }
 
-        /* ===== 상세 정보 모달 스타일 추가 ===== */
         .details-modal {
           width: min(520px, 90vw);
           background: #ffffff;
@@ -1706,6 +1746,16 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           line-height: 1.5;
           max-height: 120px;
           overflow-y: auto;
+        }
+        @keyframes modalFadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(4px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
         }
       `}</style>
 
@@ -1753,6 +1803,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                 onClick={() => {
                   setChatSearch("");
                   setIsSearchModalOpen(true);
+                  setSearchSelectedIndex(0);
                 }}
               >
                 <svg
@@ -2205,7 +2256,43 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                 autoFocus
                 placeholder="채팅 검색..."
                 value={chatSearch}
-                onChange={(e) => setChatSearch(e.target.value)}
+                onChange={(e) => {
+                  setChatSearch(e.target.value);
+                  setSearchSelectedIndex(0);
+                }}
+                onKeyDown={(e) => {
+                  if (!modalSearchResults.length) return;
+
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSearchSelectedIndex((prev) => {
+                      if (prev < 0) return 0;
+                      return (prev + 1) % modalSearchResults.length;
+                    });
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSearchSelectedIndex((prev) => {
+                      if (prev < 0) return modalSearchResults.length - 1;
+                      return (
+                        (prev - 1 + modalSearchResults.length) %
+                        modalSearchResults.length
+                      );
+                    });
+                  } else if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (
+                      searchSelectedIndex >= 0 &&
+                      searchSelectedIndex < modalSearchResults.length
+                    ) {
+                      const conv = modalSearchResults[searchSelectedIndex];
+                      handleSelectConversation(conv.id);
+                      setIsSearchModalOpen(false);
+                    }
+                  }
+                }}
               />
               <button
                 className="search-modal-close"
@@ -2214,17 +2301,26 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                 ✕
               </button>
             </div>
-            <div className="search-modal-results">
+            <div
+              className="search-modal-results"
+              ref={searchResultsRef}
+            >
               {modalSearchResults.length === 0 ? (
                 <div className="search-empty-state">
                   {chatSearch ? "검색 결과가 없습니다." : "검색어를 입력하세요."}
                 </div>
               ) : (
-                modalSearchResults.map((conv) => (
+                modalSearchResults.map((conv, index) => (
                   <div
                     key={conv.id}
-                    className="search-result-item"
-                    onClick={() => handleSelectConversation(conv.id)}
+                    className={
+                      "search-result-item" +
+                      (index === searchSelectedIndex ? " selected" : "")
+                    }
+                    onClick={() => {
+                      handleSelectConversation(conv.id);
+                      setIsSearchModalOpen(false);
+                    }}
                   >
                     <div className="search-result-icon">💬</div>
                     <div className="search-result-text">{conv.title}</div>
@@ -2255,11 +2351,9 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
           >
             상세 정보
           </button>
-          {/* ✅ 채팅 삭제 버튼 수정 */}
           <button
             onClick={(e) => {
               e.stopPropagation();
-              // 삭제 확인 모달 띄우기
               openDeleteConfirmModal(
                 activeMenuConversation.id,
                 activeMenuConversation.title
@@ -2326,7 +2420,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
         </div>
       )}
 
-      {/* ===== 상세 정보 모달 (NEW) ===== */}
+      {/* ===== 상세 정보 모달 ===== */}
       {detailsModalChat && (
         <div
           className="error-modal-overlay"
@@ -2348,7 +2442,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
               </button>
             </div>
 
-            {/* 정보 구역 */}
             <div>
               <div className="details-section-title">기본 정보</div>
               <div className="details-grid">
@@ -2385,7 +2478,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
               </div>
             </div>
 
-            {/* 채팅 요약/미리보기 구역 - 전체 내용 표시 */}
             <div>
               <div className="details-section-title">대화 전체 내용</div>
               <div className="details-preview-box">
@@ -2448,7 +2540,6 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
               <button
                 className="error-modal-primary"
                 onClick={() => {
-                  // ✅ 여기서 실제 삭제 함수 호출
                   handleDeleteConversation(confirmDelete.id);
                 }}
               >
@@ -2675,14 +2766,12 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
       {copyToastVisible && (
         <div
           className="copy-modal-overlay"
-          onClick={() => setCopyToastVisible(false)}  // 회색 배경 클릭 시 닫기
+          onClick={() => setCopyToastVisible(false)}
         >
           <div
             className="copy-modal"
             onClick={(e) => {
-              e.stopPropagation();      // 배경으로 이벤트 안 올라가게
-              // ✅ 흰 박스 빈칸(글자/버튼 말고 아무데나) 클릭해도 닫히게 하고 싶으면 아래 주석 해제
-              // setCopyToastVisible(false);
+              e.stopPropagation();
             }}
           >
             <div className="copy-modal-body">복사되었습니다.</div>

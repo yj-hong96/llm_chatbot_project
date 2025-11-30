@@ -1248,6 +1248,8 @@ select {
 }
 
 
+
+
 /* =========================================================
    7. [공통] 모달 (에러/확인) & 토스트
    ========================================================= */
@@ -1508,6 +1510,15 @@ select {
   text-align: center;
   color: #9ca3af;
   font-size: 14px;
+}
+
+.search-result-item.selected {
+  background: #e5efff;
+}
+
+.search-result-item.selected .search-result-text {
+  color: #1d4ed8;
+  font-weight: 500;
 }
 
 /* --- [추가된 스타일] 상세 정보 모달 (Details Modal) --- */
