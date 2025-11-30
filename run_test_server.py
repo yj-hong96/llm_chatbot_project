@@ -1,4 +1,4 @@
-# D:\vsc\run_test_server.py
+# D:\vsc\run_orchestrate_server.py
 from flask import (
     Flask,
     request,
@@ -11,7 +11,7 @@ import asyncio
 import time
 import json
 
-import test  # 같은 폴더의 test.py (async def ask_experts(...) 있어야 함)
+import orchestrate  # 같은 폴더의 orchestrate.py (async def ask_experts(...) 있어야 함)
 
 app = Flask(__name__)
 CORS(app)  # React 개발 서버(예: http://localhost:5173)에서 오는 요청 허용
@@ -24,7 +24,7 @@ CORS(app)  # React 개발 서버(예: http://localhost:5173)에서 오는 요청
 def chat():
     """
     React에서 POST /chat 으로 { "message": "..." } 보내면
-    test.ask_experts 를 호출해서 답변을 돌려주는 엔드포인트
+    orchestrate.ask_experts 를 호출해서 답변을 돌려주는 엔드포인트
     """
     data = request.get_json(force=True)
     user_input = data.get("message", "").strip()
@@ -34,7 +34,7 @@ def chat():
 
     try:
         # ask_experts 는 async 함수라 asyncio.run 으로 감싸서 실행
-        answer = asyncio.run(test.ask_experts(user_input))
+        answer = asyncio.run(orchestrate.ask_experts(user_input))
         return jsonify({"answer": answer})
 
     except Exception as e:
@@ -68,9 +68,9 @@ def chat_stream():
         # 3) 답안 구성 단계 시작
         yield "event: phase\ndata: composing\n\n"
 
-        # 4) 실제 에이전트 호출 (기존 test.ask_experts)
+        # 4) 실제 에이전트 호출 (기존 orchestrate.ask_experts)
         try:
-            answer = asyncio.run(test.ask_experts(user_input))
+            answer = asyncio.run(orchestrate.ask_experts(user_input))
         except Exception as e:
             # 에러 이벤트 전송
             err_payload = json.dumps({"error": str(e)}, ensure_ascii=False)
