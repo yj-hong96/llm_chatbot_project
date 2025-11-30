@@ -45,8 +45,10 @@ function ChatMessages({
   const [charIndex, setCharIndex] = useState(-1);
   // 🔍 전체 읽기 모드 여부
   const [isReadingFull, setIsReadingFull] = useState(false);
+  // ⏸️ [추가] 일시정지 상태 여부
+  const [isPaused, setIsPaused] = useState(false);
   
-  // ✨ [추가] 드래그 선택 메뉴 상태 (좌표 및 대상 메시지 인덱스)
+  // ✨ 드래그 선택 메뉴 상태 (좌표 및 대상 메시지 인덱스)
   const [selectionMenu, setSelectionMenu] = useState(null);
 
   // 컴포넌트 언마운트 시 중단
@@ -56,7 +58,7 @@ function ChatMessages({
     };
   }, []);
 
-  // ✨ [추가] 드래그 해제 감지 (선택 취소 시 메뉴 닫기)
+  // ✨ 드래그 해제 감지 (선택 취소 시 메뉴 닫기)
   useEffect(() => {
     const handleSelectionChange = () => {
       const selection = window.getSelection();
@@ -78,7 +80,7 @@ function ChatMessages({
     }
   };
 
-  // ✨ [추가] 텍스트 드래그 완료 시 실행 (말풍선에 연결)
+  // ✨ 텍스트 드래그 완료 시 실행 (말풍선에 연결)
   const handleTextMouseUp = (e, idx) => {
     const selection = window.getSelection();
     const text = selection.toString().trim();
@@ -112,6 +114,7 @@ function ChatMessages({
     synth.cancel();
     setSpeakingIdx(null);
     setCharIndex(-1);
+    setIsPaused(false); // 새로 시작하면 일시정지 해제
 
     // 1. 드래그된 텍스트 확인
     const selection = window.getSelection();
@@ -136,6 +139,7 @@ function ChatMessages({
     utterance.onstart = () => {
       setSpeakingIdx(idx);
       if (isFull) setCharIndex(0);
+      setIsPaused(false);
     };
 
     utterance.onboundary = (event) => {
@@ -148,6 +152,7 @@ function ChatMessages({
       setSpeakingIdx(null);
       setCharIndex(-1);
       setIsReadingFull(false);
+      setIsPaused(false);
     };
     utterance.onend = resetState;
     utterance.onerror = resetState;
@@ -176,10 +181,26 @@ function ChatMessages({
     }
   };
 
+  // ✅ [수정] 토글 기능 (일시정지 <-> 재생)
+  const handleTogglePause = (e) => {
+    e.stopPropagation();
+    const synth = window.speechSynthesis;
+
+    if (synth.paused) {
+      synth.resume();
+      setIsPaused(false);
+    } else {
+      synth.pause();
+      setIsPaused(true);
+    }
+  };
+
+  // 완전 중지
   const handleStopSpeak = () => {
     window.speechSynthesis.cancel();
     setSpeakingIdx(null);
     setCharIndex(-1);
+    setIsPaused(false);
   };
 
   const onDeleteClick = (idx) => {
@@ -191,9 +212,8 @@ function ChatMessages({
   };
 
   return (
-    // 스크롤 시 플로팅 메뉴 닫기 위해 onScroll 추가
     <div className="chat-messages" onScroll={() => setSelectionMenu(null)}>
-      {/* ✨ [추가] 부분 읽기 플로팅 버튼 */}
+      {/* ✨ 부분 읽기 플로팅 버튼 */}
       {selectionMenu && (
         <div
           className="selection-read-btn-wrapper"
@@ -201,7 +221,7 @@ function ChatMessages({
             position: "fixed",
             top: selectionMenu.y,
             left: selectionMenu.x,
-            transform: "translate(-50%, -100%)", // 위로 띄우기
+            transform: "translate(-50%, -100%)", 
             zIndex: 1000,
             marginTop: -8,
             animation: "fadeIn 0.2s ease-out",
@@ -209,10 +229,9 @@ function ChatMessages({
         >
           <button
             onMouseDown={(e) => {
-              e.preventDefault(); // 버튼 클릭 시 텍스트 선택이 풀리지 않도록 방지
-              // 해당 메시지 전체 텍스트를 넘기지만, handleSpeak 내부에서 선택영역을 감지하여 부분만 읽음
+              e.preventDefault(); 
               handleSpeak(messages[selectionMenu.idx].text, selectionMenu.idx);
-              setSelectionMenu(null); // 클릭 후 메뉴 숨김
+              setSelectionMenu(null); 
             }}
             style={{
               backgroundColor: "#2563eb",
@@ -232,7 +251,6 @@ function ChatMessages({
           >
             <span>🔊</span> 해당부분만 읽기
           </button>
-          {/* 말풍선 꼬리 (장식) */}
           <div style={{
             position: "absolute",
             bottom: -4,
@@ -298,7 +316,6 @@ function ChatMessages({
               <div style={{ display: "flex", flexDirection: "column", alignItems: isBot ? "flex-start" : "flex-end" }}>
                 <div
                   className="chat-message-bubble-wrapper"
-                  // ✨ [추가] 드래그 이벤트 연결
                   onMouseUp={(e) => handleTextMouseUp(e, idx)}
                   style={{
                     position: "relative",
@@ -324,7 +341,6 @@ function ChatMessages({
                       color: "#1f2937",
                     }}
                   >
-                    {/* 전체 읽기 중일 때만 하이라이트, 아니면 원본 텍스트 */}
                     {isSpeakingThis && isReadingFull ? (
                       <HighlightedText text={m.text} charIndex={charIndex} />
                     ) : (
@@ -340,14 +356,15 @@ function ChatMessages({
                 </div>
               </div>
 
-              {/* 2. 버튼 영역 */}
+              {/* 2. 버튼 영역 (재생 컨트롤 + 더보기) */}
               <div
                 className="message-actions"
                 style={{
                   position: "relative", 
                   marginTop: 0,
                   display: "flex",
-                  flexDirection: "column",
+                  flexDirection: "row", // ✨ 버튼들을 가로로 배치
+                  alignItems: "center",
                   gap: 4,
                   opacity: isHovered || isMenuOpen || isSpeakingThis ? 1 : 0,
                   transition: "opacity 0.2s ease",
@@ -355,39 +372,44 @@ function ChatMessages({
                   zIndex: 5,
                 }}
               >
-                {isSpeakingThis ? (
+                {/* ✨ 재생/일시정지 버튼 (읽는 중일 때만 표시) */}
+                {isSpeakingThis && (
                   <button
                     type="button"
-                    onClick={(e) => { e.stopPropagation(); handleStopSpeak(); }}
+                    onClick={handleTogglePause}
                     style={{
                       width: 28, height: 28, borderRadius: "50%", border: "1px solid #fca5a5",
-                      backgroundColor: "#fef2f2", color: "#ef4444", cursor: "pointer",
+                      backgroundColor: isPaused ? "#fff" : "#fef2f2", 
+                      color: "#ef4444", cursor: "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12,
-                      animation: "pulse 1.5s infinite",
+                      // 일시정지 아닐 때만 펄스 애니메이션
+                      animation: isPaused ? "none" : "pulse 1.5s infinite",
                     }}
-                    title="읽기 중지"
+                    title={isPaused ? "다시 듣기" : "일시 정지"}
                   >
-                    ⏹
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenMessageMenuIndex((prev) => prev === idx ? null : idx);
-                    }}
-                    style={{
-                      width: 28, height: 28, borderRadius: "50%", border: "1px solid #e5e7eb",
-                      backgroundColor: "#ffffff", color: "#6b7280", cursor: "pointer",
-                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14,
-                    }}
-                    title="더보기"
-                  >
-                    ⋯
+                    {isPaused ? "▶" : "⏸"}
                   </button>
                 )}
 
-                {isMenuOpen && !isSpeakingThis && (
+                {/* ✨ 더보기 버튼 (항상 표시, 듣기 중일 땐 우측에 위치) */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenMessageMenuIndex((prev) => prev === idx ? null : idx);
+                  }}
+                  style={{
+                    width: 28, height: 28, borderRadius: "50%", border: "1px solid #e5e7eb",
+                    backgroundColor: "#ffffff", color: "#6b7280", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14,
+                  }}
+                  title="더보기"
+                >
+                  ⋯
+                </button>
+
+                {/* 더보기 메뉴 드롭다운 */}
+                {isMenuOpen && (
                   <div
                     style={{
                       position: "absolute", top: "100%", [isBot ? "left" : "right"]: 0,
@@ -398,19 +420,27 @@ function ChatMessages({
                     }}
                     onClick={(e) => e.stopPropagation()}
                   >
+                    {/* 듣기 메뉴: 현재 읽고 있는 중이라면 '중지'로 변경하여 표시할 수도 있음 */}
                     {isBot && (
                       <button
                         type="button"
-                        onClick={() => { handleSpeak(m.text, idx); setOpenMessageMenuIndex(null); }}
+                        onClick={() => { 
+                          if (isSpeakingThis) {
+                            handleStopSpeak(); // 이미 읽고 있으면 완전 정지
+                          } else {
+                            handleSpeak(m.text, idx); 
+                          }
+                          setOpenMessageMenuIndex(null); 
+                        }}
                         style={{
                           border: "none", borderRadius: 6, padding: "6px 10px",
                           background: "transparent", fontSize: 13, cursor: "pointer",
-                          textAlign: "left", color: "#374151",
+                          textAlign: "left", color: isSpeakingThis ? "#ef4444" : "#374151",
                         }}
                         onMouseEnter={(e) => e.target.style.background = "#f3f4f6"}
                         onMouseLeave={(e) => e.target.style.background = "transparent"}
                       >
-                        🔊 듣기
+                        {isSpeakingThis ? "⏹ 읽기 중지" : "🔊 듣기"}
                       </button>
                     )}
                     <button

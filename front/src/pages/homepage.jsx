@@ -2,10 +2,6 @@
 import React, { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
-// 여기 키들은 localStorage에 저장되는 키 (지우지 말고 그냥 두면 됨)
-const CHAT_STORAGE_KEY = "chatConversations_v2";
-const VOICE_STORAGE_KEY = "voiceConversations_v1";
-
 // ---------------------------------------------------------
 // 홈 페이지
 // ---------------------------------------------------------
@@ -14,15 +10,12 @@ function HomePage() {
 
   // ✅ 텍스트 채팅: 기존 기록은 그대로 두고, 새 대화만 하나 더 추가
   const handleStartChat = useCallback(() => {
-    // ❌ 기존 기록 삭제 X
-    // ✅ ChatPage에서 location.state.newChat 보고 "새 대화 하나만" 추가
+    // ChatPage에서 location.state.newChat 보고 "새 대화 하나만" 추가
     navigate("/chat", { state: { newChat: true } });
   }, [navigate]);
 
   // ✅ 음성 채팅:
-  //  - 기존 음성 기록 유지 (누적)
   //  - VoiceChatPage에서 location.state.newChat 보고 새 음성 대화 추가
-  //  - autoPlay는 필요하면 VoiceChatPage에서 참고해서 추가 로직 가능
   const handleStartVoice = useCallback(() => {
     navigate("/voice", { state: { newChat: true, autoPlay: true } });
   }, [navigate]);
@@ -56,12 +49,12 @@ function HomePage() {
               width: "100%",
             }}
           >
-            {/* 1. 텍스트 채팅 시작 - 기록 유지 + 새 대화 추가 */}
+            {/* 1. 텍스트 채팅 시작 */}
             <button className="start-chat-btn" onClick={handleStartChat}>
               채팅 시작 하기
             </button>
 
-            {/* 2. 음성 채팅 시작 - 기록 유지 + 새 음성 대화 추가 */}
+            {/* 2. 음성 채팅 시작 */}
             <button className="start-voice-btn" onClick={handleStartVoice}>
               음성 시작 하기
             </button>

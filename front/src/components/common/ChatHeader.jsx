@@ -5,7 +5,7 @@ function ChatHeader({ isOnline, onClickLogo }) {
   return (
     <header className="app-header chat-header" style={{ position: "relative" }}>
       {/* 중앙: 챗봇 로고 (절대 위치로 중앙 정렬) */}
-      <div
+      <div 
         className="logo-box"
         onClick={onClickLogo}
         style={{

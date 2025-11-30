@@ -2,7 +2,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 
-import ChatHeader from "../components/chat/ChatHeader.jsx";
+import ChatHeader from "../components/common/ChatHeader.jsx";
 import ChatMessages from "../components/chat/ChatMessages.jsx";
 import ChatInput from "../components/chat/ChatInput.jsx";
 
@@ -626,6 +626,24 @@ function ChatPage() {
     isSearchModalOpen,
     detailsModalChat,
   ]);
+
+    // ----------------------------- 복사 모달: Enter / ESC / Space 로 닫기
+  useEffect(() => {
+    if (!copyToastVisible) return;
+
+    const handleCopyToastKey = (e) => {
+      // Enter, Space, ESC 입력 시 모달 닫기
+      if (e.key === "Enter" || e.key === " " || e.key === "Spacebar" || e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation(); // 입력창으로 이벤트 안 넘어가게 막기
+        setCopyToastVisible(false);
+      }
+    };
+
+    // capture: true 로 등록해서 React 입력 핸들러보다 먼저 잡아줌
+    window.addEventListener("keydown", handleCopyToastKey, true);
+    return () => window.removeEventListener("keydown", handleCopyToastKey, true);
+  }, [copyToastVisible]);
 
   // ----------------------------- Delete 키: focusArea
   useEffect(() => {
@@ -2657,11 +2675,15 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
       {copyToastVisible && (
         <div
           className="copy-modal-overlay"
-          onClick={() => setCopyToastVisible(false)}
+          onClick={() => setCopyToastVisible(false)}  // 회색 배경 클릭 시 닫기
         >
           <div
             className="copy-modal"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();      // 배경으로 이벤트 안 올라가게
+              // ✅ 흰 박스 빈칸(글자/버튼 말고 아무데나) 클릭해도 닫히게 하고 싶으면 아래 주석 해제
+              // setCopyToastVisible(false);
+            }}
           >
             <div className="copy-modal-body">복사되었습니다.</div>
             <div className="copy-modal-footer">
