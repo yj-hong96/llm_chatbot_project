@@ -276,7 +276,7 @@ function ChatSidebar({
         </button>
         {!sidebarCollapsed && (
           <button className="sidebar-new-chat-btn" onClick={onNewChat}>
-            새 채팅
+            새 대화
           </button>
         )}
       </div>

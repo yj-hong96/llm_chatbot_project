@@ -83,7 +83,8 @@ function VoiceChatMessages({
       }
     };
     document.addEventListener("selectionchange", handleSelectionChange);
-    return () => document.removeEventListener("selectionchange", handleSelectionChange);
+    return () =>
+      document.removeEventListener("selectionchange", handleSelectionChange);
   }, []);
 
   // 전역 재생이 시작되면(Play 버튼/자동 읽기) 로컬 TTS 상태 초기화
@@ -438,7 +439,8 @@ function VoiceChatMessages({
                   display: "flex",
                   flexDirection: "column",
                   gap: 4,
-                  opacity: isHovered || isMenuOpen || isAnySpeaking ? 1 : 0,
+                  opacity:
+                    isHovered || isMenuOpen || isAnySpeaking ? 1 : 0,
                   transition: "opacity 0.2s ease",
                   visibility:
                     isHovered || isMenuOpen || isAnySpeaking
@@ -447,7 +449,8 @@ function VoiceChatMessages({
                   zIndex: 5,
                 }}
               >
-                {isAnySpeaking ? (
+                {/* ✨ (1) 읽기 중일 때만 보이는 정지 버튼 */}
+                {isAnySpeaking && (
                   <button
                     type="button"
                     onClick={(e) => {
@@ -472,35 +475,37 @@ function VoiceChatMessages({
                   >
                     ⏹
                   </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenMessageMenuIndex((prev) =>
-                        prev === idx ? null : idx
-                      );
-                    }}
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: "50%",
-                      border: "1px solid #e5e7eb",
-                      backgroundColor: "#ffffff",
-                      color: "#6b7280",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 14,
-                    }}
-                    title="더보기"
-                  >
-                    ⋯
-                  </button>
                 )}
 
-                {isMenuOpen && !isAnySpeaking && (
+                {/* ✨ (2) 항상 보이는 '⋯' 메뉴 버튼 (정지/재생 옆에 위치) */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenMessageMenuIndex((prev) =>
+                      prev === idx ? null : idx
+                    );
+                  }}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    border: "1px solid #e5e7eb",
+                    backgroundColor: "#ffffff",
+                    color: "#6b7280",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 14,
+                  }}
+                  title="더보기"
+                >
+                  ⋯
+                </button>
+
+                {/* ✨ (3) 메뉴는 읽는 중이어도 그대로 사용 가능 */}
+                {isMenuOpen && (
                   <div
                     style={{
                       position: "absolute",
