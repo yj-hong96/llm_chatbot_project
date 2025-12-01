@@ -352,6 +352,36 @@ function getDraggedFolderId(e) {
   );
 }
 
+// ---------------------------------------------------------
+// 유틸: 컨텍스트 메뉴 위치 계산 (채팅/폴더 row 옆에 붙이기)
+// ---------------------------------------------------------
+function calcContextMenuPosition(rect, options = {}) {
+  const menuWidth = options.menuWidth ?? 160;
+  const menuHeight = options.menuHeight ?? 160;
+  const offsetY    = options.offsetY    ?? -5;   // ✅ 아래/위로 얼마나 더 밀지
+
+  const viewportWidth =
+    window.innerWidth || document.documentElement.clientWidth;
+  const viewportHeight =
+    window.innerHeight || document.documentElement.clientHeight;
+
+  // X: row의 오른쪽에 메뉴를 붙이되, 화면을 넘지 않게
+  const x = Math.min(rect.right, viewportWidth - menuWidth - 8);
+
+  // Y: row(ancher)의 세로 중앙에 메뉴 중앙을 맞추기
+  let y = rect.top + rect.height / 2 - menuHeight / 2;
+
+  // 위/아래로 화면 밖으로 안 나가게 보정
+  if (y < 8) y = 8;
+  if (y + menuHeight > viewportHeight - 8) {
+    y = viewportHeight - menuHeight - 8;
+  }
+
+  return { x, y };
+}
+
+
+
 // =========================================================
 // 채팅 페이지
 // =========================================================
@@ -1975,13 +2005,15 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                               className="sidebar-chat-more"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                const menuWidth = 160;
-                                const viewportWidth =
-                                  window.innerWidth || document.documentElement.clientWidth;
-                                const x = Math.min(rect.right, viewportWidth - menuWidth - 8);
-                                const y = rect.bottom + 4;
-                                setFolderMenuPosition({ x, y });
+
+                                const rowEl = e.currentTarget.closest(".sidebar-folder-item");
+                                const rect = rowEl
+                                  ? rowEl.getBoundingClientRect()
+                                  : e.currentTarget.getBoundingClientRect();
+
+                                const pos = calcContextMenuPosition(rect, { menuHeight: 140 });
+
+                                setFolderMenuPosition(pos);
                                 setMenuOpenId(null);
                                 setFocusArea("folder");
                                 setFolderMenuOpenId((prev) =>
@@ -2072,33 +2104,30 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                                     )}
                                   </button>
 
-                                  <button
-                                    className="sidebar-chat-more"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const rect =
-                                        e.currentTarget.getBoundingClientRect();
-                                      const menuWidth = 160;
-                                      const viewportWidth =
-                                        window.innerWidth ||
-                                        document.documentElement.clientWidth;
-                                      const x = Math.min(
-                                        rect.right,
-                                        viewportWidth - menuWidth - 8
-                                      );
-                                      const y = rect.bottom + 4;
-                                      setMenuPosition({ x, y });
-                                      setMenuInFolder(true);
-                                      setFolderMenuOpenId(null);
-                                      setFocusArea("chat");
-                                      setMenuOpenId((prev) =>
-                                        prev === conv.id ? null : conv.id
-                                      );
-                                    }}
-                                    aria-label="채팅 더보기"
-                                  >
-                                    ⋯
-                                  </button>
+                                    <button
+                                      className="sidebar-chat-more"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+
+                                        // ✅ 폴더 안 채팅 row 기준
+                                        const rowEl = e.currentTarget.closest(".sidebar-folder-chat-row");
+                                        const rect = rowEl
+                                          ? rowEl.getBoundingClientRect()
+                                          : e.currentTarget.getBoundingClientRect();
+                                        const pos = calcContextMenuPosition(rect, {
+                                          menuHeight: 180,
+                                          offsetY: -5,   // 여기 숫자만 같이 맞춰주면 됨
+                                        });
+                                        setMenuPosition(pos);
+                                        setMenuInFolder(true);
+                                        setFolderMenuOpenId(null);
+                                        setFocusArea("chat");
+                                        setMenuOpenId((prev) => (prev === conv.id ? null : conv.id));
+                                      }}
+                                      aria-label="채팅 더보기"
+                                    >
+                                      ⋯
+                                    </button>
                                 </div>
                               );
                             })}
@@ -2199,25 +2228,28 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                             </span>
                           )}
                         </button>
-
                         <button
                           className="sidebar-chat-more"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            const menuWidth = 160;
-                            const viewportWidth =
-                              window.innerWidth || document.documentElement.clientWidth;
-                            const x = Math.min(rect.right, viewportWidth - menuWidth - 8);
-                            const y = rect.bottom + 4;
-                            setMenuPosition({ x, y });
+
+                            // ✅ 이 버튼이 속한 전체 row(.sidebar-chat-item)를 기준으로 rect를 가져온다
+                            const rowEl = e.currentTarget.closest(".sidebar-chat-item");
+                            const rect = rowEl
+                              ? rowEl.getBoundingClientRect()
+                              : e.currentTarget.getBoundingClientRect();
+
+                              // 🔽 여기 offsetY 숫자 키워서 좀 더 아래로
+                              const pos = calcContextMenuPosition(rect, {
+                                menuHeight: 180,
+                                offsetY: -5,   // 6~10 정도 취향대로 조절
+                              });
+                            setMenuPosition(pos);
                             setMenuInFolder(false);
                             setFolderMenuOpenId(null);
                             setSelectedFolderId(null);
                             setFocusArea("chat");
-                            setMenuOpenId((prev) =>
-                              prev === conv.id ? null : conv.id
-                            );
+                            setMenuOpenId((prev) => (prev === conv.id ? null : conv.id));
                           }}
                           aria-label="채팅 더보기"
                         >
