@@ -16,6 +16,10 @@ const SIDEBAR_MIN_WIDTH = 180;
 const SIDEBAR_MAX_WIDTH = 360;
 const SIDEBAR_INIT_WIDTH = 220;
 
+// ✅ 스크롤 시작 기준 개수
+const FOLDER_SCROLL_LIMIT =5;
+const CHAT_SCROLL_LIMIT = 20; // 기존 20을 상수로 분리
+
 // ---------------------------------------------------------
 // 유틸: 날짜 포맷팅 (YYYY. MM. DD. HH:mm)
 // ---------------------------------------------------------
@@ -1894,14 +1898,17 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                 채팅 검색
               </button>
 
-              {/* ================== 폴더 섹션 ================== */}
-              <div className="sidebar-section-title">폴더</div>
+                {/* ================== 폴더 섹션 ================== */}
+                <div className="sidebar-section-title">폴더</div>
 
-              <div
-                className="sidebar-folder-list"
-                onMouseDown={() => setFocusArea("folder")}
-                onScroll={handleScrollCloseMenus}  // ✅ 폴더 리스트 스크롤 시 메뉴 닫기
-              >
+                <div
+                  className={
+                    "sidebar-folder-list" +
+                    (folders.length > FOLDER_SCROLL_LIMIT ? " sidebar-folder-list-limit" : "")
+                  }
+                  onMouseDown={() => setFocusArea("folder")}
+                  onScroll={handleScrollCloseMenus}
+                >
                 {folders.length === 0 ? (
                   <div
                     className="sidebar-folder-empty"
@@ -2169,7 +2176,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                 <div
                   className={
                     "sidebar-chat-list" +
-                    (rootConversations.length > 20 ? " sidebar-chat-list-limit" : "")
+                    (rootConversations.length > CHAT_SCROLL_LIMIT ? " sidebar-chat-list-limit" : "")
                   }
                   ref={rootListRef}
                   onDragOver={handleRootListDragOver}

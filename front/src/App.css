@@ -610,8 +610,17 @@ select {
   border-radius: 0.9rem;
   padding: 4px 4px 6px;
   background: #fafafa;
+  /* 폴더가 5개 이하일 때는 자연 높이로, 스크롤 없음 */
 }
 
+/* ✅ 폴더가 6개 이상일 때만(> FOLDER_SCROLL_LIMIT) 스크롤 */
+.sidebar-folder-list.sidebar-folder-list-limit {
+  max-height: 400px;     /* ← 폴더 5개 + 여유 공간 정도로 넉넉하게 */
+  overflow-y: auto;
+  padding-right: 4px;    /* 스크롤바 생겨도 내용 안 잘리게 살짝 여유 */
+}
+
+/* 폴더 없음 상태 */
 .sidebar-folder-empty {
   font-size: 0;
   padding: 4px 2px;
