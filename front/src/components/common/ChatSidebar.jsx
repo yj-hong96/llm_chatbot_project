@@ -10,6 +10,56 @@ function getDraggedFolderId(e) {
   return e.dataTransfer.getData("text/plain") || "";
 }
 
+/**
+ * 메뉴 위치 계산 헬퍼
+ * - 기본: 버튼 "오른쪽 / 같은 높이"에 붙여서 띄움
+ * - 화면 밖으로 나가면 좌·우 / 위·아래로 살짝만 조정
+ */
+function getSafeMenuPosition(rect, options = {}) {
+  const {
+    menuHeight = 140,
+    menuWidth = 180,
+    offset = 4, // 버튼과 메뉴 사이 간격
+    margin = 8, // 화면 가장자리 여백
+  } = options;
+
+  // SSR 방어
+  if (typeof window === "undefined") {
+    return { x: rect.right + offset, y: rect.top };
+  }
+
+  const viewportH =
+    window.innerHeight || document.documentElement.clientHeight || 0;
+  const viewportW =
+    window.innerWidth || document.documentElement.clientWidth || 0;
+
+  // ===== X 방향 =====
+  // 기본: 버튼 오른쪽에 메뉴를 붙인다.
+  let x = rect.right + offset;
+
+  // 오른쪽으로 나가면 → 버튼 왼쪽으로 붙이기
+  if (x + menuWidth + margin > viewportW) {
+    x = rect.left - menuWidth - offset;
+    // 그래도 모자라면 화면 안쪽으로만 클램프
+    if (x < margin) {
+      x = Math.max(margin, viewportW - menuWidth - margin);
+    }
+  }
+
+  // ===== Y 방향 =====
+  // 기본: 버튼의 top 위치에 맞춘다.
+  let y = rect.top;
+
+  // 아래로 넘치면 위로 조금 올림
+  if (y + menuHeight + margin > viewportH) {
+    y = viewportH - menuHeight - margin;
+  }
+  // 위로도 나가지 않게 최소값 보정
+  if (y < margin) y = margin;
+
+  return { x, y };
+}
+
 function ChatSidebar({
   // 상태 Props
   sidebarOpen,
@@ -54,6 +104,44 @@ function ChatSidebar({
   const [folderDraggingId, setFolderDraggingId] = useState(null);
   const [folderDragOverId, setFolderDragOverId] = useState(null);
 
+  // 🔹 현재 열려있는 "채팅 메뉴"가 붙어 있어야 할 버튼 엘리먼트
+  const [chatMenuAnchorEl, setChatMenuAnchorEl] = useState(null);
+  // 🔹 폴더 메뉴용 앵커
+  const [folderMenuAnchorEl, setFolderMenuAnchorEl] = useState(null);
+
+  // ✅ 스크롤 시 메뉴 닫기 (리스트 내부 스크롤용 – 여분)
+  const handleScrollCloseMenus = () => {
+    if (menuOpenId || chatMenuAnchorEl || folderMenuAnchorEl) {
+      setMenuOpenId(null);
+      setFolderMenuOpenId(null);
+      setChatMenuAnchorEl(null);
+      setFolderMenuAnchorEl(null);
+    }
+  };
+
+  // ✅ 전역 휠 이벤트로도 메뉴 닫기 (어디서든 휠 굴리면 닫힘)
+  useEffect(() => {
+    if (!menuOpenId && !folderMenuAnchorEl && !chatMenuAnchorEl) return;
+
+    const handleWheelGlobal = () => {
+      setMenuOpenId(null);
+      setFolderMenuOpenId(null);
+      setChatMenuAnchorEl(null);
+      setFolderMenuAnchorEl(null);
+    };
+
+    window.addEventListener("wheel", handleWheelGlobal, { passive: true });
+    return () => {
+      window.removeEventListener("wheel", handleWheelGlobal);
+    };
+  }, [
+    menuOpenId,
+    folderMenuAnchorEl,
+    chatMenuAnchorEl,
+    setMenuOpenId,
+    setFolderMenuOpenId,
+  ]);
+
   // 사이드바 리사이즈
   useEffect(() => {
     if (!isResizingSidebar) return;
@@ -88,6 +176,17 @@ function ChatSidebar({
     setIsResizingSidebar(true);
   };
 
+  // ✅ 폴더 클릭 시 선택/해제 토글
+  const handleFolderClick = (folderId) => {
+    if (selectedFolderId === folderId) {
+      // 이미 선택된 폴더를 다시 클릭 → 해제
+      onSelectFolder(null);
+    } else {
+      // 다른 폴더 선택
+      onSelectFolder(folderId);
+    }
+  };
+
   // 헬퍼: 드래그 핸들러 래퍼 (부모 핸들러 + 로컬 상태)
   const onDragStart = (e, id) => {
     setDraggingId(id);
@@ -102,6 +201,59 @@ function ChatSidebar({
     setFolderDragOverId(null);
     dragHandlers.handleDragEnd();
   };
+
+  // 🔹 메뉴가 열려 있는 동안 스크롤/리사이즈 시 위치 재계산 (채팅 메뉴)
+  useEffect(() => {
+    if (!menuOpenId || !chatMenuAnchorEl) return;
+
+    const updatePosition = () => {
+      const rect = chatMenuAnchorEl.getBoundingClientRect();
+      const pos = getSafeMenuPosition(rect, {
+        menuHeight: 140,
+        menuWidth: 180,
+      });
+      setMenuPosition(pos);
+    };
+
+    updatePosition();
+
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [menuOpenId, chatMenuAnchorEl, setMenuPosition]);
+
+  // 메뉴가 닫히면 앵커 초기화
+  useEffect(() => {
+    if (!menuOpenId) {
+      setChatMenuAnchorEl(null);
+    }
+  }, [menuOpenId]);
+
+  // 🔹 폴더 메뉴도 스크롤에 따라 움직이게
+  useEffect(() => {
+    if (!folderMenuAnchorEl) return;
+
+    const updatePosition = () => {
+      const rect = folderMenuAnchorEl.getBoundingClientRect();
+      const pos = getSafeMenuPosition(rect, {
+        menuHeight: 120,
+        menuWidth: 180,
+      });
+      setFolderMenuPosition(pos);
+    };
+
+    updatePosition();
+
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [folderMenuAnchorEl, setFolderMenuPosition]);
 
   // 루트 채팅만 필터링
   const rootConversations = conversations.filter((c) => !c.folderId);
@@ -146,6 +298,7 @@ function ChatSidebar({
           <div
             className="sidebar-folder-list"
             onMouseDown={() => dragHandlers.setFocusArea("folder")}
+            onScroll={handleScrollCloseMenus} // 폴더 구역 스크롤 시 메뉴 닫기
           >
             {folders.map((folder) => {
               const childConvs = conversations.filter(
@@ -165,7 +318,7 @@ function ChatSidebar({
                     (isDropOver ? " drag-over" : "") +
                     (isFolderDragging ? " dragging" : "")
                   }
-                  onClick={() => onSelectFolder(folder.id)}
+                  onClick={() => handleFolderClick(folder.id)} // ✅ 선택/해제 토글
                   draggable
                   onDragStart={(e) => {
                     setFolderDraggingId(folder.id);
@@ -199,13 +352,16 @@ function ChatSidebar({
                         className="sidebar-chat-more"
                         onClick={(e) => {
                           e.stopPropagation();
-                          const rect =
-                            e.currentTarget.getBoundingClientRect();
-                          setFolderMenuPosition({
-                            x: rect.right,
-                            y: rect.bottom + 4,
+                          const btn = e.currentTarget;
+                          const rect = btn.getBoundingClientRect();
+                          const pos = getSafeMenuPosition(rect, {
+                            menuHeight: 120,
+                            menuWidth: 180,
                           });
+                          setFolderMenuAnchorEl(btn);
+                          setFolderMenuPosition(pos);
                           setFolderMenuOpenId(folder.id);
+                          // 폴더 메뉴 열릴 때 채팅 메뉴는 닫기
                           setMenuOpenId(null);
                         }}
                       >
@@ -259,12 +415,14 @@ function ChatSidebar({
                             className="sidebar-chat-more"
                             onClick={(e) => {
                               e.stopPropagation();
-                              const rect =
-                                e.currentTarget.getBoundingClientRect();
-                              setMenuPosition({
-                                x: rect.right,
-                                y: rect.bottom + 4,
+                              const btn = e.currentTarget;
+                              const rect = btn.getBoundingClientRect();
+                              const pos = getSafeMenuPosition(rect, {
+                                menuHeight: 140,
+                                menuWidth: 180,
                               });
+                              setChatMenuAnchorEl(btn);
+                              setMenuPosition(pos);
                               setMenuOpenId(conv.id);
                               setMenuInFolder(true);
                             }}
@@ -310,7 +468,11 @@ function ChatSidebar({
             onDrop={dragHandlers.handleRootListDrop}
           >
             <div className="sidebar-section-title">채팅</div>
-            <div className="sidebar-chat-list" ref={rootListRef}>
+            <div
+              className="sidebar-chat-list"
+              ref={rootListRef}
+              onScroll={handleScrollCloseMenus} // 채팅 리스트 스크롤 시 메뉴 닫기
+            >
               {rootConversations.map((conv, idx) => (
                 <div
                   key={conv.id}
@@ -341,12 +503,14 @@ function ChatSidebar({
                     className="sidebar-chat-more"
                     onClick={(e) => {
                       e.stopPropagation();
-                      const rect =
-                        e.currentTarget.getBoundingClientRect();
-                      setMenuPosition({
-                        x: rect.right,
-                        y: rect.bottom + 4,
+                      const btn = e.currentTarget;
+                      const rect = btn.getBoundingClientRect();
+                      const pos = getSafeMenuPosition(rect, {
+                        menuHeight: 140,
+                        menuWidth: 180,
                       });
+                      setChatMenuAnchorEl(btn);
+                      setMenuPosition(pos);
                       setMenuOpenId(conv.id);
                       setMenuInFolder(false);
                     }}

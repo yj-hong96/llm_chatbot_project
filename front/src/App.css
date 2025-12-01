@@ -93,6 +93,7 @@ select {
   font-size: clamp(1.8rem, 3.4vw, 2.6rem);
 }
 
+/* 기본(PC) 레이아웃 – 기존 값 유지 */
 .home-main {
   flex: 1;
   width: 100%;
@@ -116,7 +117,7 @@ select {
 
 /* Hero 이미지 */
 .hero-image {
-  width: 50vw;
+  width: 50vw;             /* 기존 설정 그대로 */
   aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: 1.1rem;
@@ -130,25 +131,37 @@ select {
   display: block;
 }
 
+/* =========================================================
+   [홈 페이지] 버튼 스타일 & 티키타카 모션 (통합)
+   ========================================================= */
+
 /* 채팅 시작하기 & 음성 시작하기 버튼 공통 스타일 */
 .start-chat-btn,
 .start-voice-btn {
   margin-top: 2.5vh;
-  text-align: center;
-  width: 50vw;
-  min-width: 450px;
+  width: 50vw;             /* 기존 설정 그대로 */
+  min-width: 450px;        /* 기본 구간에서는 그대로 유지 */
   padding: 1rem 1.4rem;
+
+  /* 아이콘 공간 확보 및 텍스트 중앙 정렬 (티키타카 모션용) */
+  padding-left: 45px !important;
+  padding-right: 55px !important;
+  text-align: center;
+
   border-radius: 1rem;
   border: none;
   background-color: #e5e7eb;
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
+  position: relative;
+  overflow: visible; /* 애니메이션 요소 노출 */
+
   transition: transform 0.1s ease-out, box-shadow 0.1s ease-out,
     background-color 0.15s ease-out;
 }
 
-/* 마우스 올렸을 때(Hover) 효과 - 두 버튼 공통 적용 */
+/* 마우스 올렸을 때(Hover) 효과 */
 .start-chat-btn:hover,
 .start-voice-btn:hover {
   background-color: #d4d4d4;
@@ -156,27 +169,209 @@ select {
   transform: translateY(-1px);
 }
 
-/* 모바일 화면용 미디어 쿼리 */
-@media (max-width: 768px) {
+/* ---------------------------------------
+   1. 채팅 시작 하기: 말풍선 2개 (상대 & 나)
+   --------------------------------------- */
+.start-chat-btn::before,
+.start-chat-btn::after {
+  content: "💬";
+  position: absolute;
+  top: 50%;
+  font-size: 0.85em;
+  padding: 3px 6px;
+  border-radius: 8px;
+  box-shadow: 1px 1px 3px rgba(0,0,0,0.15);
+  display: inline-block;
+}
+
+/* [1-1] 상대방 말풍선 (왼쪽/뒤) */
+.start-chat-btn::before {
+  right: 32px;
+  margin-top: -8px;
+  background-color: #ffffff;
+  color: #333;
+  z-index: 1;
+  transform-origin: right bottom;
+  animation: chatLeft 2.4s infinite cubic-bezier(0.3, 1.2, 0.7, 1);
+}
+
+/* [1-2] 내 말풍선 (오른쪽/앞) */
+.start-chat-btn::after {
+  right: 14px;
+  margin-top: 2px;
+  background-color: #FEE500;
+  color: #3b1e1e;
+  z-index: 2;
+  transform-origin: left top;
+  animation: chatRight 2.4s infinite cubic-bezier(0.3, 1.2, 0.7, 1);
+}
+
+@keyframes chatLeft {
+  0% { transform: scale(0); opacity: 0; }
+  10% { transform: scale(1.1); opacity: 1; }
+  20% { transform: scale(1); }
+  50% { transform: scale(1) translate(-2px, 0); }
+  60% { transform: scale(1.05) translate(0, -2px); }
+  85% { opacity: 1; transform: scale(1); }
+  95% { opacity: 0; transform: scale(0.8); }
+  100% { opacity: 0; }
+}
+
+@keyframes chatRight {
+  0% { transform: scale(0); opacity: 0; }
+  25% { transform: scale(0); opacity: 0; }
+  35% { transform: scale(1.1); opacity: 1; }
+  45% { transform: scale(1); }
+  50% { transform: scale(1) translate(2px, 0); }
+  60% { transform: scale(1.05) translate(0, -2px); }
+  85% { opacity: 1; transform: scale(1); }
+  95% { opacity: 0; transform: scale(0.8); }
+  100% { opacity: 0; }
+}
+
+/* ---------------------------------------
+   2. 음성 시작 하기: 서로 대화하는 두 사람 (티키타카)
+   --------------------------------------- */
+/* [2-1] 상대방 (왼쪽 사람) */
+.start-voice-btn::before {
+  content: "🗣️";
+  position: absolute;
+  top: 50%;
+  right: 30px; /* 채팅 버튼 아이콘 위치와 균형 맞춤 */
+  margin-top: -11px; /* 수직 중앙 */
+  font-size: 1.3em;
+  display: inline-block;
+  transform-origin: center center;
+  animation: talkPartner 2s infinite ease-in-out;
+}
+
+/* [2-2] 나 (오른쪽 사람 - 마주보기 위해 좌우반전) */
+.start-voice-btn::after {
+  content: "🗣️";
+  position: absolute;
+  top: 50%;
+  right: 6px; /* 우측 끝 */
+  margin-top: -11px;
+  font-size: 1.3em;
+  display: inline-block;
+  transform-origin: center center;
+  animation: talkMe 2s infinite ease-in-out;
+}
+
+@keyframes talkPartner {
+  0% { transform: scale(1); opacity: 0.6; filter: blur(0.5px); }
+  25% { transform: scale(1.25) translateX(-2px); opacity: 1; filter: blur(0); text-shadow: 2px 2px 4px rgba(0,0,0,0.1); }
+  50% { transform: scale(0.9); opacity: 0.5; filter: blur(0.5px); }
+  75% { transform: scale(0.9); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 0.6; }
+}
+
+@keyframes talkMe {
+  0% { transform: scaleX(-1) scale(0.9); opacity: 0.5; filter: blur(0.5px); }
+  25% { transform: scaleX(-1) scale(0.9); opacity: 0.5; }
+  50% { transform: scaleX(-1) scale(1.25) translateX(-2px); opacity: 1; filter: blur(0); text-shadow: -2px 2px 4px rgba(0,0,0,0.1); }
+  75% { transform: scaleX(-1) scale(1); opacity: 0.8; }
+  100% { transform: scaleX(-1) scale(0.9); opacity: 0.5; }
+}
+
+
+/* =========================================================
+   [추가] 1. 중간 폭(태블릿/좁은 PC, 769px ~ 1200px) 대응
+   - 가로 스크롤이 생기지 않도록 패딩과 폭을 조정
+   ========================================================= */
+@media (min-width: 769px) and (max-width: 1200px) {
   .home-main {
-    padding-left: 6vw;
-    padding-right: 6vw;
-    align-items: center;
+    padding-left: 10vw;     /* 25vw → 10vw 로 줄여서 전체 폭 100% 안으로 */
+    padding-right: 10vw;
+    align-items: center;    /* 가운데 정렬 */
   }
+
   .home-main-inner {
     align-items: center;
   }
+
   .hero-image {
-    width: 90vw;
+    width: min(70vw, 640px);   /* 화면에 따라 70vw 까지, 최대 640px */
   }
-  
+
+  .start-chat-btn,
+  .start-voice-btn {
+    width: min(70vw, 640px);
+    min-width: 0;              /* 이 구간에서는 최소 450px 제한 해제 → 스크롤 방지 */
+  }
+}
+
+/* =========================================================
+   [수정] 2. 모바일 화면(≤ 768px)
+   - 세로/가로 모두 꽉 차게 보이되 잘리지 않도록 조정
+   ========================================================= */
+@media (max-width: 768px) {
+  .home-main {
+    padding-left: 5vw;       /* 6vw → 5vw : 5 + 90 + 5 = 100vw */
+    padding-right: 5vw;
+    align-items: center;
+  }
+
+  .home-main-inner {
+    align-items: center;
+  }
+
+  .hero-image {
+    width: 90vw;             /* 기존 값 유지, 양옆 패딩 포함해 정확히 100vw */
+  }
+
   /* 모바일에서 버튼 너비 조정 - 두 버튼 공통 적용 */
   .start-chat-btn,
   .start-voice-btn {
-    width: 70vw;
-    min-width: 0;
+    width: 90vw;             /* 이미지와 동일 폭 */
+    min-width: 0;            /* 최소폭 제한 제거 */
+    font-size: 0.95rem;      /* 아주 작은 폰에서 줄바꿈 줄이기 */
   }
 }
+
+/* =========================================================
+   [추가] 3. 아주 큰 화면(≥ 1600px, 빔프로젝터/대형 모니터)
+   - 너무 커지지 않도록 상한선만 걸어줌
+   ========================================================= */
+@media (min-width: 1600px) {
+  .hero-image {
+    width: min(50vw, 900px);   /* 기본은 50vw, 최대 900px */
+  }
+
+  .start-chat-btn,
+  .start-voice-btn {
+    width: min(50vw, 900px);
+  }
+}
+
+/* =========================================================
+   [추가] 4. 화면 높이가 낮은 울트라와이드 / 빔프로젝터
+   - 세로가 잘리는 것을 막기 위해 전체를 살짝 축소
+   ========================================================= */
+@media (max-height: 700px) and (min-width: 1024px) {
+  .logo-box {
+    margin-top: 2vh;
+    margin-bottom: 2vh;
+  }
+
+  .home-main {
+    padding-top: 2vh;
+    padding-bottom: 3vh;
+  }
+
+  .home-main-inner {
+    transform: scale(0.9);
+    transform-origin: center top;
+  }
+}
+
+@media (max-height: 600px) and (min-width: 1024px) {
+  .home-main-inner {
+    transform: scale(0.8);
+  }
+}
+
+
 
 /* =========================================================
    3. [채팅 페이지] 전체 레이아웃 & 사이드바
@@ -518,7 +713,7 @@ select {
   padding: 2px 0;
   border-radius: 0.7rem;
   transition: all 0.12s ease-out;
-  overflow: hidden;
+  overflow: visible; /* [수정] 팝업 메뉴 잘림 방지 (hidden -> visible) */
 }
 .sidebar-folder-chat {
   width: 100%;
@@ -619,7 +814,7 @@ select {
   padding: 2px 4px;
   border-radius: 0.9rem;
   transition: all 0.12s ease-out;
-  overflow: hidden;
+  overflow: visible; /* [수정] 팝업 메뉴 잘림 방지 (hidden -> visible) */
 }
 .sidebar-chat-main {
   flex: 1;
@@ -1249,7 +1444,6 @@ select {
 
 
 
-
 /* =========================================================
    7. [공통] 모달 (에러/확인) & 토스트
    ========================================================= */
@@ -1515,7 +1709,6 @@ select {
 .search-result-item.selected {
   background: #e5efff;
 }
-
 .search-result-item.selected .search-result-text {
   color: #1d4ed8;
   font-weight: 500;
@@ -1568,7 +1761,8 @@ select {
   overflow-y: auto;
 }
 
-body, .chat-page {
+body,
+.chat-page {
   font-family: 'Noto Sans KR', sans-serif !important;
 }
 
@@ -1653,53 +1847,53 @@ body, .chat-page {
   box-shadow: none;
   transform: none;
 }
-        .voice-buttons {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 16px;
-          margin: 4px 0 6px;
-        }
 
-        .play-button {
-          width: 64px;
-          height: 64px;
-          border-radius: 50%;
-          border: none;
-          cursor: pointer;
-          font-size: 28px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-          box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-          color: #ffffff;
-          position: relative;
-        }
-        .play-button:hover:not(:disabled) {
-          transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 12px 25px rgba(0,0,0,0.15);
-        }
-        .play-button:active:not(:disabled) {
-          transform: translateY(1px) scale(0.95);
-        }
-        .play-button.idle {
-          background: linear-gradient(135deg, #6366f1, #4f46e5);
-        }
-        .play-button.speaking {
-          background: linear-gradient(135deg, #10b981, #059669);
-          animation: pulse-green 1.6s infinite;
-        }
-        .play-button.paused {
-          background: #6b7280;
-        }
-        .play-button:disabled {
-          cursor: default;
-          opacity: 0.6;
-          box-shadow: none;
-          transform: none;
-        }
+.voice-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 4px 0 6px;
+}
 
+.play-button {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  color: #ffffff;
+  position: relative;
+}
+.play-button:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+}
+.play-button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.95);
+}
+.play-button.idle {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+}
+.play-button.speaking {
+  background: linear-gradient(135deg, #10b981, #059669);
+  animation: pulse-green 1.6s infinite;
+}
+.play-button.paused {
+  background: #6b7280;
+}
+.play-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+  box-shadow: none;
+  transform: none;
+}
 
 @keyframes pulse-red {
   0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
@@ -1711,139 +1905,4 @@ body, .chat-page {
   0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
   70% { box-shadow: 0 0 0 24px rgba(16, 185, 129, 0); }
   100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-}
-
-/* Modals & Overlays */
-.search-modal-overlay,
-.error-modal-overlay,
-.copy-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(2px);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.search-modal-content {
-  width: 600px;
-  max-width: 90%;
-  background: #fff;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-}
-
-.search-modal-header {
-  padding: 16px;
-  border-bottom: 1px solid #f0f0f0;
-  display: flex;
-  align-items: center;
-}
-
-.search-modal-input {
-  flex: 1;
-  border: none;
-  outline: none;
-  font-size: 16px;
-  margin: 0 12px;
-}
-
-.search-modal-results {
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 8px 0;
-}
-
-.search-result-item {
-  padding: 12px 20px;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.search-result-item:hover {
-  background: #f3f4f6;
-}
-
-.search-result-date {
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-.error-modal {
-  background: #fff;
-  border-radius: 12px;
-  width: 400px;
-  padding: 24px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-}
-
-.error-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.error-modal-title {
-  font-weight: 700;
-  font-size: 18px;
-}
-
-.error-modal-footer {
-  margin-top: 24px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.error-modal-primary {
-  background: #dc2626;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-}
-
-.error-modal-secondary {
-  background: #f3f4f6;
-  color: #374151;
-  padding: 8px 16px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-}
-
-.modal-input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  margin-top: 12px;
-  font-size: 15px;
-}
-
-/* Drag & Drop Visuals */
-.sidebar-chat-item.dragging {
-  opacity: 0.5;
-  background: #f0f9ff;
-  border: 1px dashed #3b82f6;
-}
-
-.sidebar-chat-item.drag-over {
-  border-top: 2px solid #3b82f6;
-}
-
-.sidebar-folder-item.drag-over {
-  background: #eff6ff;
-}
-
-.sidebar-folder-item.dragging {
-  opacity: 0.5;
-  border: 1px dashed #6366f1;
 }

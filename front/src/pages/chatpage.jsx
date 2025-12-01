@@ -106,7 +106,8 @@ function makeErrorInfo(rawError) {
     text.includes("rate_limit_exceeded") ||
     text.includes("RateLimit") ||
     text.includes("Too Many Requests") ||
-    (text.toLowerCase().includes("quota") && text.toLowerCase().includes("token"))
+    (text.toLowerCase().includes("quota") &&
+      text.toLowerCase().includes("token"))
   ) {
     const code = errorCode || "429";
     return {
@@ -425,6 +426,38 @@ function ChatPage() {
   const [folderMenuOpenId, setFolderMenuOpenId] = useState(null);
   const [folderMenuPosition, setFolderMenuPosition] = useState(null);
 
+  // 🔻🔻🔻 여기 추가: 스크롤/휠 시 메뉴 닫기 공통 처리 🔻🔻🔻
+  const handleScrollCloseMenus = () => {
+    if (menuOpenId || folderMenuOpenId || openMessageMenuIndex !== null) {
+      setMenuOpenId(null);
+      setFolderMenuOpenId(null);
+      setOpenMessageMenuIndex(null);
+    }
+  };
+
+  useEffect(() => {
+    // 메뉴가 하나라도 열려 있을 때만 wheel 리스너 등록
+    if (
+      !menuOpenId &&
+      !folderMenuOpenId &&
+      openMessageMenuIndex === null
+    ) {
+      return;
+    }
+
+    const handleWheelGlobal = () => {
+      setMenuOpenId(null);
+      setFolderMenuOpenId(null);
+      setOpenMessageMenuIndex(null);
+    };
+
+    window.addEventListener("wheel", handleWheelGlobal, { passive: true });
+    return () => {
+      window.removeEventListener("wheel", handleWheelGlobal);
+    };
+  }, [menuOpenId, folderMenuOpenId, openMessageMenuIndex]);
+  // 🔺🔺🔺 추가 끝 🔺🔺🔺
+
   // 모달 상태들
   const [confirmDelete, setConfirmDelete] = useState(null); // {id, title}
   const [renameInfo, setRenameInfo] = useState(null); // {id, value}
@@ -507,6 +540,15 @@ function ChatPage() {
     window.addEventListener("click", handleWindowClick);
     return () => window.removeEventListener("click", handleWindowClick);
   }, []);
+  
+    useEffect(() => {
+      // 폴더도, 채팅도 아무것도 드래그 중이 아닌데
+      // dragOverFolderId 가 남아 있으면 안전하게 초기화
+      if (!draggingId && !folderDraggingId && dragOverFolderId !== null) {
+        setDragOverFolderId(null);
+      }
+    }, [draggingId, folderDraggingId, dragOverFolderId]);
+
 
   // ----------------------------- 전역 단축키: Ctrl/Cmd+K, Ctrl/Cmd+N
   useEffect(() => {
@@ -1828,6 +1870,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
               <div
                 className="sidebar-folder-list"
                 onMouseDown={() => setFocusArea("folder")}
+                onScroll={handleScrollCloseMenus}  // ✅ 폴더 리스트 스크롤 시 메뉴 닫기
               >
                 {folders.length === 0 ? (
                   <div
@@ -1871,6 +1914,14 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                         onDragOver={(e) => handleFolderDragOver(e, folder.id)}
                         onDrop={(e) => handleFolderDrop(e, folder.id)}
                         onDragEnd={handleFolderItemDragEnd}
+                          // ✅ 폴더 영역을 벗어날 때 하이라이트 초기화
+                        onDragLeave={() => {
+                          // 폴더를 드래그 중이 아닐 때만, 채팅 드롭 하이라이트를 지움
+                          if (!folderDraggingId) {
+                            setDragOverFolderId((prev) => (prev === folder.id ? null : prev));
+                          }
+                        }}
+                        
                         onClick={() => setSelectedFolderId(folder.id)}
                         aria-label={`폴더 ${folder.name}`}
                       >
@@ -1955,6 +2006,10 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                               setDragOverFolderId(folder.id);
                             }}
                             onDrop={(e) => handleDropChatOnFolderHeader(e, folder.id)}
+                                // ✅ 여기서도 폴더 밖으로 나가면 하이라이트 제거
+                            onDragLeave={() => {
+                              setDragOverFolderId((prev) => (prev === folder.id ? null : prev));
+                            }}
                           >
                             대화 없음 — 여기로 드롭
                           </div>
@@ -2094,6 +2149,7 @@ pre{font-size:12px;background:#f7f7f7;padding:12px;border-radius:8px;max-height:
                     setFocusArea("chat");
                     setSelectedFolderId(null);
                   }}
+                  onScroll={handleScrollCloseMenus}  // ✅ 채팅 리스트 스크롤 시 메뉴 닫기
                 >
                   {rootConversations.map((conv, idx) => {
                     const isActive = conv.id === currentId;
